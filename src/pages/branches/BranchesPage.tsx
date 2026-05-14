@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -13,42 +13,41 @@ import {
   MoreVertical,
   Navigation,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
+import { branchService, Branch } from '@/services/branchService';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 
 export const BranchesPage = () => {
-  const branches = [
-    { 
-      id: 'B1', 
-      name: 'Main Street HQ', 
-      address: '123 Downtown Ave, NY 10001', 
-      phone: '+1 (555) 123-4567', 
-      staff: 12, 
-      status: 'Primary', 
-      performance: '+12%',
-      isOpen: true 
-    },
-    { 
-      id: 'B2', 
-      name: 'West End Mall', 
-      address: 'Suite 405, West End Blvd, NY 10023', 
-      phone: '+1 (555) 987-6543', 
-      staff: 8, 
-      status: 'Branch', 
-      performance: '+5.4%',
-      isOpen: true 
-    },
-    { 
-      id: 'B3', 
-      name: 'East Side Boutique', 
-      address: '12 River Rd, NY 10044', 
-      phone: '+1 (555) 444-5555', 
-      staff: 4, 
-      status: 'Branch', 
-      performance: '-2.1%',
-      isOpen: false 
-    },
-  ];
+  const { businessId } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [branches, setBranches] = useState<Branch[]>([]);
+
+  useEffect(() => {
+    const fetchBranches = async () => {
+      if (!businessId) return;
+      setLoading(true);
+      try {
+        const data = await branchService.getBranches(businessId);
+        setBranches(data);
+      } catch (error) {
+        toast.error('Failed to load branches');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBranches();
+  }, [businessId]);
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -73,7 +72,7 @@ export const BranchesPage = () => {
                          <div className="h-16 w-16 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground shadow-lg">
                             <MapPin className="h-8 w-8" />
                          </div>
-                         {branch.isOpen ? (
+                         {branch.is_active ? (
                             <div className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-green-500 border-2 border-white" />
                          ) : (
                             <div className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 border-2 border-white" />
@@ -85,13 +84,13 @@ export const BranchesPage = () => {
                          <div>
                             <div className="flex items-center gap-2">
                                <h3 className="text-xl font-bold">{branch.name}</h3>
-                               <Badge variant={branch.status === 'Primary' ? 'default' : 'secondary'} className="text-[10px] py-0">
-                                  {branch.status}
+                               <Badge variant={branch.is_primary ? 'default' : 'secondary'} className="text-[10px] py-0">
+                                  {branch.is_primary ? 'Primary' : 'Branch'}
                                 </Badge>
                             </div>
                             <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1">
                                <Navigation className="h-3 w-3" />
-                               {branch.address}
+                               {branch.address || 'No address provided'}
                             </p>
                          </div>
                          <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
@@ -102,21 +101,21 @@ export const BranchesPage = () => {
                             <p className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
                                <Users className="h-3 w-3" /> Staff
                             </p>
-                            <p className="text-sm font-bold">{branch.staff} Members</p>
+                            <p className="text-sm font-bold">Managed</p>
                          </div>
                          <div className="space-y-1">
                             <p className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
-                               <TrendingUp className="h-3 w-3" /> Performance
+                               <TrendingUp className="h-3 w-3" /> Status
                             </p>
-                            <p className={cn("text-sm font-bold", branch.performance.startsWith('+') ? "text-green-500" : "text-red-500")}>
-                               {branch.performance}
+                            <p className={cn("text-sm font-bold", branch.is_active ? "text-green-500" : "text-red-500")}>
+                               {branch.is_active ? 'Active' : 'Inactive'}
                             </p>
                          </div>
                          <div className="space-y-1">
                             <p className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
                                <Phone className="h-3 w-3" /> Phone
                             </p>
-                            <p className="text-xs font-medium">{branch.phone}</p>
+                            <p className="text-xs font-medium">{branch.phone || 'N/A'}</p>
                          </div>
                          <div className="flex items-center justify-end">
                             <Button variant="outline" size="sm" className="w-full sm:w-auto h-8 text-xs font-bold shadow-sm">Manage</Button>
@@ -126,6 +125,11 @@ export const BranchesPage = () => {
                 </div>
              </Card>
            ))}
+           {branches.length === 0 && (
+             <div className="text-center py-12 bg-muted/20 rounded-lg">
+                <p className="text-muted-foreground">No branches found. Add your first location!</p>
+             </div>
+           )}
         </div>
 
         <div className="space-y-6">
@@ -137,7 +141,7 @@ export const BranchesPage = () => {
               <CardContent className="space-y-6">
                  <div className="flex justify-between items-center bg-muted/50 p-4 rounded-xl">
                     <div>
-                       <p className="text-2xl font-bold">3</p>
+                       <p className="text-2xl font-bold">{branches.length}</p>
                        <p className="text-xs text-muted-foreground">Total Branches</p>
                     </div>
                     <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
@@ -149,14 +153,10 @@ export const BranchesPage = () => {
                     <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Quick Stats</h4>
                     <div className="space-y-3">
                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-muted-foreground">Open Now</span>
+                          <span className="text-muted-foreground">Active Now</span>
                           <span className="font-bold flex items-center gap-1">
-                             <CheckCircle2 className="h-3 w-2 text-green-500" /> 2 Locations
+                             <CheckCircle2 className="h-3 w-2 text-green-500" /> {branches.filter(b => b.is_active).length} Locations
                           </span>
-                       </div>
-                       <div className="flex justify-between items-center text-sm">
-                          <span className="text-muted-foreground">Total Staff Assets</span>
-                          <span className="font-bold">24 Professionals</span>
                        </div>
                     </div>
                  </div>

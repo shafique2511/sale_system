@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Table, 
@@ -21,19 +21,52 @@ import {
   MoreVertical,
   CheckCircle2,
   Clock,
-  AlertCircle
+  AlertCircle,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { posService } from '@/services/posService';
+import { toast } from 'sonner';
 
 export const PaymentsPage = () => {
+  const { businessId } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [transactions, setTransactions] = useState<any[]>([]);
 
-  const transactions = [
-    { id: 'TXN-001', customer: 'John Doe', amount: 45.00, method: 'Credit Card', status: 'Completed', date: 'May 14, 2:30 PM', branch: 'Main Street' },
-    { id: 'TXN-002', customer: 'Jane Smith', amount: 32.50, method: 'Cash', status: 'Completed', date: 'May 14, 1:15 PM', branch: 'West End' },
-    { id: 'TXN-003', customer: 'Robert Johnson', amount: 85.00, method: 'Credit Card', status: 'Pending', date: 'May 14, 11:45 AM', branch: 'Main Street' },
-    { id: 'TXN-004', customer: 'Emily Brown', amount: 12.00, method: 'Apple Pay', status: 'Completed', date: 'May 13, 4:20 PM', branch: 'Main Street' },
-    { id: 'TXN-005', customer: 'Michael Wilson', amount: 55.00, method: 'Credit Card', status: 'Failed', date: 'May 13, 3:10 PM', branch: 'West End' },
-  ];
+  const fetchData = async () => {
+    if (!businessId) return;
+    setLoading(true);
+    try {
+      const data = await posService.getRecentOrders(businessId, 50);
+      setTransactions(data);
+    } catch (error) {
+      toast.error('Failed to load transactions');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [businessId]);
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const filteredTransactions = transactions.filter(txn => 
+    txn.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (txn.customer?.name && txn.customer.name.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
+  const totalRevenue = transactions.reduce((sum, t) => sum + Number(t.total_amount), 0);
+  const avgTransaction = transactions.length > 0 ? totalRevenue / transactions.length : 0;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -43,13 +76,13 @@ export const PaymentsPage = () => {
           <p className="text-muted-foreground">Monitor real-time revenue and payment status across branches.</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={fetchData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
           <Button variant="outline" className="gap-2">
             <Download className="h-4 w-4" />
             Export CSV
-          </Button>
-          <Button className="gap-2">
-            <Filter className="h-4 w-4" />
-            Date Range
           </Button>
         </div>
       </div>
@@ -57,38 +90,38 @@ export const PaymentsPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Gross Revenue</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Gross Revenue</CardTitle>
           </CardHeader>
           <CardContent>
-             <div className="text-2xl font-bold">$12,450.00</div>
-             <p className="text-[10px] text-green-500 font-bold mt-1">+15% from last period</p>
+             <div className="text-2xl font-bold">${totalRevenue.toFixed(2)}</div>
+             <p className="text-[10px] text-green-500 font-bold mt-1">Total across {transactions.length} sales</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Successful</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Total Sales</CardTitle>
           </CardHeader>
           <CardContent>
-             <div className="text-2xl font-bold">428</div>
-             <p className="text-[10px] text-muted-foreground font-bold mt-1">98.2% Success Rate</p>
+             <div className="text-2xl font-bold">{transactions.length}</div>
+             <p className="text-[10px] text-muted-foreground font-bold mt-1">Processed transactions</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Avg. Transaction</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Avg Ticket</CardTitle>
           </CardHeader>
           <CardContent>
-             <div className="text-2xl font-bold">$29.10</div>
-             <p className="text-[10px] text-muted-foreground font-bold mt-1">Steady growth</p>
+             <div className="text-2xl font-bold">${avgTransaction.toFixed(2)}</div>
+             <p className="text-[10px] text-muted-foreground font-bold mt-1">Per transaction average</p>
           </CardContent>
         </Card>
         <Card className="bg-primary/5 border-primary/20">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-primary">Pending Payout</CardTitle>
+            <CardTitle className="text-sm font-medium text-primary uppercase tracking-widest text-[10px]">Active Today</CardTitle>
           </CardHeader>
           <CardContent>
-             <div className="text-2xl font-bold text-primary">$3,204.45</div>
-             <p className="text-[10px] text-muted-foreground font-bold mt-1 italic">ETA: Tomorrow</p>
+             <div className="text-2xl font-bold text-primary">{transactions.filter(t => new Date(t.created_at).toDateString() === new Date().toDateString()).length}</div>
+             <p className="text-[10px] text-muted-foreground font-bold mt-1">Items processed today</p>
           </CardContent>
         </Card>
       </div>
@@ -103,10 +136,10 @@ export const PaymentsPage = () => {
              <div className="relative w-full md:w-80">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  placeholder="ID, Customer or Method..." 
-                  className="pl-10 h-10" 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                   placeholder="Search ID, Customer or Method..." 
+                   className="pl-10 h-10" 
+                   value={searchTerm}
+                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
              </div>
           </div>
@@ -120,40 +153,37 @@ export const PaymentsPage = () => {
                 <TableHead>Amount</TableHead>
                 <TableHead>Method</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Date & Branch</TableHead>
+                <TableHead>Date & Time</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions.map((txn) => (
+              {filteredTransactions.map((txn) => (
                 <TableRow key={txn.id}>
-                  <TableCell className="font-mono text-xs">{txn.id}</TableCell>
-                  <TableCell className="font-bold">{txn.customer}</TableCell>
-                  <TableCell className="font-bold text-primary">${txn.amount.toFixed(2)}</TableCell>
+                  <TableCell className="font-mono text-[10px]">{txn.id.slice(0, 8)}</TableCell>
+                  <TableCell className="font-bold">{txn.customer?.name || 'Walk-in'}</TableCell>
+                  <TableCell className="font-bold text-primary">${Number(txn.total_amount).toFixed(2)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <CreditCard className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-xs">{txn.method}</span>
+                      <span className="text-xs uppercase">{txn.payment_method || 'Cash'}</span>
                     </div>
                   </TableCell>
                   <TableCell>
                     <Badge 
-                      variant={
-                        txn.status === 'Completed' ? 'default' : 
-                        txn.status === 'Pending' ? 'secondary' : 'destructive'
-                      }
-                      className="gap-1"
+                      variant="default"
+                      className="gap-1 bg-green-500 hover:bg-green-600"
                     >
-                      {txn.status === 'Completed' && <CheckCircle2 className="h-3 w-3" />}
-                      {txn.status === 'Pending' && <Clock className="h-3 w-3" />}
-                      {txn.status === 'Failed' && <AlertCircle className="h-3 w-3" />}
-                      {txn.status}
+                      <CheckCircle2 className="h-3 w-3" />
+                      Completed
                     </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="text-xs">
-                      <p className="font-medium">{txn.date}</p>
-                      <p className="text-muted-foreground uppercase text-[9px] font-bold tracking-tighter">{txn.branch}</p>
+                      <p className="font-medium">{new Date(txn.created_at).toLocaleDateString()}</p>
+                      <p className="text-muted-foreground uppercase text-[9px] font-bold tracking-tighter">
+                        {new Date(txn.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
@@ -163,6 +193,13 @@ export const PaymentsPage = () => {
                   </TableCell>
                 </TableRow>
               ))}
+              {filteredTransactions.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    No transactions found.
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>

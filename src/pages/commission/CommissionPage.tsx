@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { 
   Table, 
@@ -19,16 +19,45 @@ import {
   Download,
   Filter,
   DollarSign,
-  UserCheck
+  UserCheck,
+  Loader2
 } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { commissionService } from '@/services/commissionService';
+import { toast } from 'sonner';
 
 export const CommissionPage = () => {
-  const staffCommissions = [
-    { staff: 'Alex Thompson', sales: 4500, rate: '15%', earned: 675, status: 'Paid' },
-    { staff: 'Jessica Lee', sales: 5200, rate: '15%', earned: 780, status: 'Pending' },
-    { staff: 'Sam Wilson', sales: 2100, rate: '10%', earned: 210, status: 'Paid' },
-    { staff: 'Sarah Parker', sales: 3800, rate: '12%', earned: 456, status: 'Pending' },
-  ];
+  const { businessId } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [commissions, setCommissions] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!businessId) return;
+      setLoading(true);
+      try {
+        const data = await commissionService.getCommissions(businessId);
+        setCommissions(data);
+      } catch (error) {
+        toast.error('Failed to load commissions');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [businessId]);
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const totalEarned = commissions.reduce((sum, c) => sum + Number(c.earned_amount), 0);
+  const pendingEarned = commissions.filter(c => c.status === 'pending').reduce((sum, c) => sum + Number(c.earned_amount), 0);
+  const staffCount = new Set(commissions.map(c => c.staff_id)).size;
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -52,21 +81,21 @@ export const CommissionPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Total Commission (MTD)</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Total Commission (All Time)</CardTitle>
           </CardHeader>
           <CardContent>
-             <div className="text-2xl font-bold">$2,121.00</div>
-             <p className="text-xs text-muted-foreground mt-1">Calculated across 4 staff members</p>
+             <div className="text-2xl font-bold">${totalEarned.toLocaleString()}</div>
+             <p className="text-xs text-muted-foreground mt-1">Calculated across {staffCount} staff members</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Avg Commission Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-widest text-[10px]">Recent Payout Status</CardTitle>
           </CardHeader>
           <CardContent>
-             <div className="text-2xl font-bold">13.2%</div>
+             <div className="text-2xl font-bold">Updated</div>
              <p className="text-xs text-green-500 mt-1 flex items-center gap-1">
-                <ArrowUpRight className="h-3 w-3" /> +1.2% from last period
+                <ArrowUpRight className="h-3 w-3" /> Latest calculated: {commissions.length > 0 ? new Date(commissions[0].created_at).toLocaleDateString() : 'N/A'}
              </p>
           </CardContent>
         </Card>
@@ -75,7 +104,7 @@ export const CommissionPage = () => {
             <CardTitle className="text-sm font-medium text-primary uppercase tracking-widest text-[10px]">Pending Payouts</CardTitle>
           </CardHeader>
           <CardContent>
-             <div className="text-2xl font-bold text-primary">$1,236.00</div>
+             <div className="text-2xl font-bold text-primary">${pendingEarned.toLocaleString()}</div>
              <p className="text-xs text-muted-foreground mt-1">Ready for next payroll</p>
           </CardContent>
         </Card>
@@ -86,7 +115,7 @@ export const CommissionPage = () => {
            <div className="flex justify-between items-center">
               <div>
                  <CardTitle>Commission Breakdown</CardTitle>
-                 <CardDescription>Earnings by staff for the current payroll cycle.</CardDescription>
+                 <CardDescription>Individual transactions and earnings.</CardDescription>
               </div>
               <Button variant="outline" size="sm" className="gap-2">
                  <Download className="h-4 w-4" /> Export
@@ -98,39 +127,48 @@ export const CommissionPage = () => {
              <TableHeader>
                <TableRow>
                  <TableHead>Staff Member</TableHead>
-                 <TableHead>Total Sales</TableHead>
-                 <TableHead>Commission Rate</TableHead>
-                 <TableHead>Earned Amount</TableHead>
+                 <TableHead>Sale Amount</TableHead>
+                 <TableHead>Rate</TableHead>
+                 <TableHead>Earned</TableHead>
+                 <TableHead>Date</TableHead>
                  <TableHead>Status</TableHead>
                  <TableHead className="text-right">Actions</TableHead>
                </TableRow>
              </TableHeader>
              <TableBody>
-               {staffCommissions.map((row, i) => (
-                 <TableRow key={i}>
+               {commissions.map((row) => (
+                 <TableRow key={row.id}>
                     <TableCell>
                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs">
-                             {row.staff.charAt(0)}
+                          <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center font-bold text-xs uppercase">
+                             {row.staff?.full_name?.charAt(0) || 'S'}
                           </div>
-                          <span className="font-bold">{row.staff}</span>
+                          <span className="font-bold">{row.staff?.full_name || 'Staff Member'}</span>
                        </div>
                     </TableCell>
-                    <TableCell>${row.sales.toLocaleString()}</TableCell>
+                    <TableCell>${row.sale_amount.toLocaleString()}</TableCell>
                     <TableCell>
-                       <Badge variant="secondary">{row.rate}</Badge>
+                       <Badge variant="secondary">{row.commission_rate}%</Badge>
                     </TableCell>
-                    <TableCell className="font-bold text-primary">${row.earned.toFixed(2)}</TableCell>
+                    <TableCell className="font-bold text-primary">${row.earned_amount.toFixed(2)}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{new Date(row.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
-                       <Badge variant={row.status === 'Paid' ? 'outline' : 'default'} className={row.status === 'Paid' ? 'border-green-500 text-green-600' : ''}>
+                       <Badge variant={row.status === 'paid' ? 'outline' : 'default'} className={row.status === 'paid' ? 'border-green-500 text-green-600 capitalize' : 'capitalize'}>
                           {row.status}
                        </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                       <Button variant="ghost" size="sm">View Logic</Button>
+                       <Button variant="ghost" size="sm">Details</Button>
                     </TableCell>
                  </TableRow>
                ))}
+               {commissions.length === 0 && (
+                 <TableRow>
+                   <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                     No commission data found.
+                   </TableCell>
+                 </TableRow>
+               )}
              </TableBody>
            </Table>
         </CardContent>
