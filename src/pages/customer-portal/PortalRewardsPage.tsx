@@ -1,30 +1,85 @@
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import React, { useEffect, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
   Gift, 
-  Sparkles, 
   Star, 
   TrendingUp, 
   Clock, 
   Coffee, 
   Scissors,
-  CheckCircle2,
   Lock,
-  ArrowRight
+  ArrowRight,
+  Loader2,
+  Tag,
+  Sparkles
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { useParams } from 'react-router-dom';
+import { loyaltyService, LoyaltyReward } from '@/services/loyaltyService';
+import { customerService } from '@/services/customerService';
+import { portalService } from '@/services/portalService';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export const PortalRewardsPage = () => {
-  const currentPoints = 1250;
-  
-  const rewards = [
-    { name: 'Free Premium Coffee', points: 300, icon: Coffee, color: 'bg-amber-500', available: true },
-    { name: '10% Service Discount', points: 500, icon: Scissors, color: 'bg-blue-500', available: true },
-    { name: 'Free Product Sample', points: 800, icon: Gift, color: 'bg-pink-500', available: true },
-    { name: 'Free Full Service', points: 2500, icon: Sparkles, color: 'bg-indigo-600', available: false },
-  ];
+  const { businessId } = useParams<{ businessId: string }>();
+  const [loading, setLoading] = useState(true);
+  const [customer, setCustomer] = useState<any>(null);
+  const [rewards, setRewards] = useState<LoyaltyReward[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!businessId) return;
+      setLoading(true);
+      try {
+        const [customers, rewardsData] = await Promise.all([
+          customerService.getCustomers(businessId),
+          loyaltyService.getRewards(businessId)
+        ]);
+        
+        if (customers.length > 0) {
+          setCustomer(customers[0]);
+        }
+        setRewards(rewardsData);
+      } catch (error) {
+        toast.error('Failed to load rewards');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [businessId]);
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const currentPoints = customer?.points || 0;
+  const nextReward = rewards.find(r => r.points_required > currentPoints) || rewards[rewards.length - 1];
+
+  const getRewardIcon = (type: string) => {
+    switch (type) {
+      case 'Product': return Tag;
+      case 'Service': return Scissors;
+      case 'Custom': return Gift;
+      default: return Star;
+    }
+  };
+
+  const getRewardColor = (type: string) => {
+    switch (type) {
+      case 'Product': return 'bg-amber-500';
+      case 'Service': return 'bg-blue-500';
+      case 'Custom': return 'bg-pink-500';
+      default: return 'bg-indigo-600';
+    }
+  };
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
@@ -42,20 +97,24 @@ export const PortalRewardsPage = () => {
            <div className="flex flex-col md:flex-row justify-between items-center gap-8">
               <div className="space-y-4 text-center md:text-left">
                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full text-xs font-bold backdrop-blur-sm">
-                    <Star className="h-3 w-3 fill-white" /> Loyalty Level: Gold
+                    <Star className="h-3 w-3 fill-white" /> Loyalty Status: Active
                  </div>
                  <h2 className="text-5xl font-extrabold tracking-tight">{currentPoints.toLocaleString()}</h2>
                  <p className="text-lg opacity-80 uppercase tracking-widest font-medium">Points Balance</p>
               </div>
               
-              <div className="w-full md:w-64 space-y-4">
-                 <div className="flex justify-between text-sm font-bold uppercase tracking-widest opacity-80 mb-1">
-                    <span>Next Reward</span>
-                    <span>{currentPoints} / 2500</span>
-                 </div>
-                 <Progress value={(currentPoints/2500)*100} className="h-3 bg-white/20" />
-                 <p className="text-[10px] text-center opacity-60">You are 1,250 points away from a FREE Haircut!</p>
-              </div>
+              {nextReward && (
+                <div className="w-full md:w-64 space-y-4">
+                   <div className="flex justify-between text-sm font-bold uppercase tracking-widest opacity-80 mb-1">
+                      <span>Next Reward</span>
+                      <span>{currentPoints} / {nextReward.points_required}</span>
+                   </div>
+                   <Progress value={Math.min((currentPoints / nextReward.points_required) * 100, 100)} className="h-3 bg-white/20" />
+                   <p className="text-[10px] text-center opacity-60">
+                     You are {Math.max(nextReward.points_required - currentPoints, 0)} points away from {nextReward.name}!
+                   </p>
+                </div>
+              )}
            </div>
         </CardContent>
       </Card>
@@ -69,50 +128,59 @@ export const PortalRewardsPage = () => {
 
       {/* Rewards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-         {rewards.map((reward, i) => (
-           <Card key={i} className={cn(
-             "relative overflow-hidden transition-all duration-300",
-             reward.available ? "hover:shadow-lg hover:-translate-y-1 cursor-pointer" : "opacity-75 grayscale"
-           )}>
-              <CardContent className="p-6">
-                 <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4">
-                       <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center text-white shadow-lg", reward.color)}>
-                          <reward.icon className="h-6 w-6" />
-                       </div>
-                       <div>
-                          <h3 className="font-bold">{reward.name}</h3>
-                          <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-1">
-                             <Clock className="h-3 w-3" /> Expires in 30 days
+         {rewards.map((reward, i) => {
+           const isAvailable = currentPoints >= reward.points_required;
+           const Icon = getRewardIcon(reward.reward_type);
+           const color = getRewardColor(reward.reward_type);
+           
+           return (
+            <Card key={reward.id} className={cn(
+              "relative overflow-hidden transition-all duration-300",
+              isAvailable ? "hover:shadow-lg hover:-translate-y-1 cursor-pointer" : "opacity-75 grayscale"
+            )}>
+               <CardContent className="p-6">
+                  <div className="flex items-start justify-between">
+                     <div className="flex items-center gap-4">
+                        <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center text-white shadow-lg", color)}>
+                           <Icon className="h-6 w-6" />
+                        </div>
+                        <div>
+                           <h3 className="font-bold">{reward.name}</h3>
+                           <div className="flex items-center gap-1 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mt-1">
+                              <Clock className="h-3 w-3" /> {reward.is_active ? 'Available' : 'Expired'}
+                           </div>
+                        </div>
+                     </div>
+                     {isAvailable ? (
+                        <Badge variant="secondary" className="bg-primary/10 text-primary font-bold border-primary/20">
+                           {reward.points_required} PTS
+                        </Badge>
+                     ) : (
+                        <div className="flex flex-col items-end gap-1">
+                           <Lock className="h-4 w-4 text-muted-foreground" />
+                           <span className="text-[10px] font-bold text-muted-foreground">{reward.points_required} PTS</span>
+                        </div>
+                     )}
+                  </div>
+                  
+                  <div className="mt-6 flex items-center justify-between">
+                     <div className="space-y-1">
+                        {!isAvailable && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                             <Progress value={(currentPoints / reward.points_required) * 100} className="h-1 w-20" />
+                             <span>{Math.round((currentPoints / reward.points_required) * 100)}% there</span>
                           </div>
-                       </div>
-                    </div>
-                    {reward.available ? (
-                       <Badge variant="secondary" className="bg-primary/10 text-primary font-bold border-primary/20">
-                          {reward.points} PTS
-                       </Badge>
-                    ) : (
-                       <Lock className="h-4 w-4 text-muted-foreground" />
-                    )}
-                 </div>
-                 
-                 <div className="mt-6 flex items-center justify-between">
-                    <div className="space-y-1">
-                       {!reward.available && (
-                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <Progress value={50} className="h-1 w-20" />
-                            <span>50% there</span>
-                         </div>
-                       )}
-                    </div>
-                    <Button variant={reward.available ? "default" : "outline"} size="sm" disabled={!reward.available} className="gap-2">
-                       {reward.available ? "Redeem Now" : "Locked"}
-                       <ArrowRight className="h-3 w-3" />
-                    </Button>
-                 </div>
-              </CardContent>
-           </Card>
-         ))}
+                        )}
+                     </div>
+                     <Button variant={isAvailable ? "default" : "outline"} size="sm" disabled={!isAvailable} className="gap-2">
+                        {isAvailable ? "Redeem Now" : "Locked"}
+                        <ArrowRight className="h-3 w-3" />
+                     </Button>
+                  </div>
+               </CardContent>
+            </Card>
+           );
+         })}
       </div>
 
       {/* History */}
@@ -121,9 +189,8 @@ export const PortalRewardsPage = () => {
          <Card>
             <CardContent className="p-0">
                {[
-                 { action: 'Visit Points - Main Street', pts: '+50', date: 'Yesterday' },
-                 { action: 'Redeemed: Single Espresso', pts: '-300', date: '3 days ago' },
-                 { action: 'Birthday Bonus', pts: '+500', date: 'May 10' },
+                 { action: 'Welcome Bonus', pts: '+100', date: 'Account Created' },
+                 { action: 'Visit Points', pts: '+50', date: 'Recently' },
                ].map((item, i) => (
                  <div key={i} className="flex items-center justify-between p-4 border-b last:border-0 hover:bg-muted/30 transition-colors">
                     <div className="flex items-center gap-3">
@@ -147,4 +214,3 @@ export const PortalRewardsPage = () => {
   );
 };
 
-const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');

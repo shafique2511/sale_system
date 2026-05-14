@@ -1,25 +1,67 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { 
   User, 
-  Settings, 
-  Bell, 
   Shield, 
-  MapPin, 
+  Bell, 
   CreditCard,
   LogOut,
   Camera,
   ChevronRight,
   Phone,
   Mail,
-  Calendar
+  Calendar,
+  Loader2
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { useParams } from 'react-router-dom';
+import { customerService } from '@/services/customerService';
+import { portalService } from '@/services/portalService';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export const PortalProfilePage = () => {
+  const { businessId } = useParams<{ businessId: string }>();
+  const [loading, setLoading] = useState(true);
+  const [customer, setCustomer] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!businessId) return;
+      setLoading(true);
+      try {
+        const customers = await customerService.getCustomers(businessId);
+        if (customers.length > 0) {
+          setCustomer(customers[0]);
+        }
+      } catch (error) {
+        toast.error('Failed to load profile');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [businessId]);
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center p-12">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!customer) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Please login to manage your profile.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
       <div className="flex flex-col gap-1">
@@ -32,22 +74,24 @@ export const PortalProfilePage = () => {
            <Card className="text-center p-6">
               <div className="relative inline-block mx-auto">
                  <div className="h-24 w-24 rounded-full bg-primary/10 border-4 border-primary/20 flex items-center justify-center text-3xl font-extrabold text-primary">
-                    JD
+                    {customer.name.charAt(0)}
                  </div>
                  <Button variant="secondary" size="icon" className="absolute -right-2 -bottom-2 h-8 w-8 rounded-full shadow-lg">
                     <Camera className="h-4 w-4" />
                  </Button>
               </div>
-              <h3 className="text-xl font-bold mt-4 leading-tight">John Doe</h3>
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest mt-1">Gold Member Since 2024</p>
+              <h3 className="text-xl font-bold mt-4 leading-tight">{customer.name}</h3>
+              <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest mt-1">
+                Member since {new Date(customer.created_at).getFullYear()}
+              </p>
               <div className="flex justify-center gap-4 mt-6">
                  <div className="text-center">
-                    <p className="text-lg font-bold">12</p>
+                    <p className="text-lg font-bold">--</p>
                     <p className="text-[10px] uppercase text-muted-foreground">Visits</p>
                  </div>
                  <div className="w-px h-8 bg-muted" />
                  <div className="text-center">
-                    <p className="text-lg font-bold">1.2k</p>
+                    <p className="text-lg font-bold">{customer.points}</p>
                     <p className="text-[10px] uppercase text-muted-foreground">Points</p>
                  </div>
               </div>
@@ -88,35 +132,29 @@ export const PortalProfilePage = () => {
               <CardContent className="space-y-4">
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                       <Label className="flex items-center gap-2">
-                          <User className="h-3 w-3 text-muted-foreground" /> First Name
+                       <Label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          <User className="h-3 w-3" /> Full Name
                        </Label>
-                       <Input defaultValue="John" />
-                    </div>
-                    <div className="space-y-2">
-                       <Label className="flex items-center gap-2">
-                          <User className="h-3 w-3 text-muted-foreground" /> Last Name
-                       </Label>
-                       <Input defaultValue="Doe" />
+                       <Input defaultValue={customer.name} />
                     </div>
                  </div>
                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                       <Mail className="h-3 w-3 text-muted-foreground" /> Email Address
+                    <Label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                       <Mail className="h-3 w-3" /> Email Address
                     </Label>
-                    <Input type="email" defaultValue="john.doe@example.com" />
+                    <Input type="email" defaultValue={customer.email} />
                  </div>
                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                       <Phone className="h-3 w-3 text-muted-foreground" /> Phone Number
+                    <Label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                       <Phone className="h-3 w-3" /> Phone Number
                     </Label>
-                    <Input defaultValue="+1 (555) 000-1234" />
+                    <Input defaultValue={customer.phone || 'Enter your phone'} />
                  </div>
                  <div className="space-y-2">
-                    <Label className="flex items-center gap-2">
-                       <Calendar className="h-3 w-3 text-muted-foreground" /> Date of Birth
+                    <Label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                       <Calendar className="h-3 w-3" /> Customer ID
                     </Label>
-                    <Input type="date" defaultValue="1990-01-01" />
+                    <Input readOnly value={customer.id} className="bg-muted font-mono text-xs" />
                  </div>
               </CardContent>
               <CardFooter className="border-t pt-6">
@@ -144,13 +182,6 @@ export const PortalProfilePage = () => {
                     </div>
                     <Switch />
                  </div>
-                 <div className="flex items-center justify-between border-t pt-6">
-                    <div className="space-y-0.5">
-                       <Label>Show Profile Pic</Label>
-                       <p className="text-xs text-muted-foreground">Allow staff to see your photo for faster check-in.</p>
-                    </div>
-                    <Switch defaultChecked />
-                 </div>
               </CardContent>
            </Card>
         </div>
@@ -159,4 +190,3 @@ export const PortalProfilePage = () => {
   );
 };
 
-const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');

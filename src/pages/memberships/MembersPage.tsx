@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Table, 
   TableBody, 
@@ -16,15 +16,49 @@ import {
   MoreVertical,
   QrCode,
   Calendar,
-  CreditCard
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { mockCustomers } from '@/constants/mockData';
+import { useAuth } from '@/hooks/useAuth';
+import { membershipService, UserMembership } from '@/services/membershipService';
+import { toast } from 'sonner';
 
 export const MembersPage = () => {
+  const { businessId } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [members, setMembers] = useState<UserMembership[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const activeMembers = mockCustomers.filter(c => c.membership !== 'None');
+  const fetchData = async () => {
+    if (!businessId) return;
+    setLoading(true);
+    try {
+      const data = await membershipService.getActiveMemberships(businessId);
+      setMembers(data);
+    } catch (error) {
+      toast.error('Failed to load members');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [businessId]);
+
+  const filteredMembers = members.filter(m => 
+    m.customer?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    m.plan?.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -33,10 +67,16 @@ export const MembersPage = () => {
           <h1 className="text-3xl font-bold tracking-tight">Active Members</h1>
           <p className="text-muted-foreground">Monitor your member base and their usage history.</p>
         </div>
-        <Button className="gap-2">
-          <UserPlus className="h-4 w-4" />
-          Enroll Member
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={fetchData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            Enroll Member
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center gap-4">
@@ -70,27 +110,29 @@ export const MembersPage = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {activeMembers.map((member) => (
+            {filteredMembers.map((member) => (
               <TableRow key={member.id}>
-                <TableCell className="font-medium">{member.name}</TableCell>
+                <TableCell className="font-medium">{member.customer?.name}</TableCell>
                 <TableCell>
-                  <Badge variant="secondary">{member.membership}</Badge>
+                  <Badge variant="secondary">{member.plan?.name}</Badge>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-green-500" />
-                    <span className="text-sm">Active</span>
+                    <span className="text-sm capitalize">{member.status}</span>
                   </div>
                 </TableCell>
                 <TableCell>
-                  {member.membership.includes('VIP') || member.membership.includes('Platinum') ? (
+                  {member.remaining_hits === null ? (
                     <span className="text-xs font-bold text-primary">UNLIMITED</span>
                   ) : (
-                    <span className="font-medium px-2 py-0.5 rounded bg-muted">3 / 4</span>
+                    <span className="font-medium px-2 py-0.5 rounded bg-muted">
+                      {member.remaining_hits} / {member.plan?.service_limit}
+                    </span>
                   )}
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">
-                  Dec 12, 2026
+                  {member.end_date ? new Date(member.end_date).toLocaleDateString() : 'N/A'}
                 </TableCell>
                 <TableCell className="text-right flex justify-end gap-1">
                   <Button variant="ghost" size="icon" title="Digital Card">
@@ -105,9 +147,17 @@ export const MembersPage = () => {
                 </TableCell>
               </TableRow>
             ))}
+            {filteredMembers.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  No active members found.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
     </div>
   );
 };
+

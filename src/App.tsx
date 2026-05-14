@@ -70,7 +70,7 @@ export default function App() {
               <Route path="/license" element={<LicensePage />} />
             </Route>
 
-            <Route path="/portal" element={<PortalLayout />}>
+            <Route path="/portal/:businessId" element={<PortalLayout />}>
               <Route index element={<PortalHome />} />
               <Route path="book" element={<PortalBookPage />} />
               <Route path="bookings" element={<PortalBookingsPage />} />
@@ -78,6 +78,7 @@ export default function App() {
               <Route path="rewards" element={<PortalRewardsPage />} />
               <Route path="profile" element={<PortalProfilePage />} />
             </Route>
+
           </Routes>
           <Toaster position="top-right" />
           <OmniAssistant />

@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
   Trophy, 
@@ -10,12 +9,50 @@ import {
   Gift, 
   Star,
   Users,
-  TrendingUp,
-  Coins
+  Coins,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
-import { mockCustomers } from '@/constants/mockData';
+import { useAuth } from '@/hooks/useAuth';
+import { loyaltyService, LoyaltyStats } from '@/services/loyaltyService';
+import { businessService } from '@/services/businessService';
+import { toast } from 'sonner';
 
 export const LoyaltyPage = () => {
+  const { businessId } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<LoyaltyStats | null>(null);
+  const [earningRate, setEarningRate] = useState(1);
+
+  const fetchData = async () => {
+    if (!businessId) return;
+    setLoading(true);
+    try {
+      const [statsData, businessData] = await Promise.all([
+        loyaltyService.getLoyaltyStats(businessId),
+        businessService.getBusinessById(businessId)
+      ]);
+      setStats(statsData);
+      setEarningRate(businessData?.loyalty_points_per_dollar || 1);
+    } catch (error) {
+      toast.error('Failed to load loyalty data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [businessId]);
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -26,10 +63,16 @@ export const LoyaltyPage = () => {
           </h1>
           <p className="text-muted-foreground">Configure point accumulation rules and track customer rewards.</p>
         </div>
-        <Button className="gap-2">
-          <Settings className="h-4 w-4" />
-          Program Settings
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={fetchData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button className="gap-2">
+            <Settings className="h-4 w-4" />
+            Program Settings
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -41,7 +84,7 @@ export const LoyaltyPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">10 Points</div>
+            <div className="text-2xl font-bold">{earningRate} Point{earningRate !== 1 ? 's' : ''}</div>
             <p className="text-xs text-muted-foreground mt-1">for every $1.00 spent</p>
           </CardContent>
         </Card>
@@ -53,7 +96,7 @@ export const LoyaltyPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">248</div>
+            <div className="text-2xl font-bold">{stats?.activeParticipants}</div>
             <p className="text-xs text-muted-foreground mt-1">customers with points</p>
           </CardContent>
         </Card>
@@ -65,7 +108,7 @@ export const LoyaltyPage = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,402</div>
+            <div className="text-2xl font-bold">{stats?.totalRedeemed}</div>
             <p className="text-xs text-muted-foreground mt-1">vouchers redeemed life-time</p>
           </CardContent>
         </Card>
@@ -79,7 +122,7 @@ export const LoyaltyPage = () => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {mockCustomers.sort((a,b) => b.points - a.points).map((customer, i) => (
+              {stats?.topEarners.map((customer, i) => (
                 <div key={customer.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors">
                   <div className="flex items-center gap-3">
                     <span className="text-xs font-bold text-muted-foreground w-4">{i+1}</span>
@@ -94,6 +137,9 @@ export const LoyaltyPage = () => {
                   </div>
                 </div>
               ))}
+              {stats?.topEarners.length === 0 && (
+                <p className="text-center py-8 text-muted-foreground">No earners found yet.</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -135,3 +181,4 @@ export const LoyaltyPage = () => {
     </div>
   );
 };
+
