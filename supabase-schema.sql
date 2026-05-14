@@ -89,6 +89,32 @@ CREATE TABLE IF NOT EXISTS bookings (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Orders (POS)
+CREATE TABLE IF NOT EXISTS orders (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+  branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
+  staff_id UUID REFERENCES user_profiles(id),
+  customer_id UUID REFERENCES user_profiles(id),
+  total_amount DECIMAL(10,2) NOT NULL,
+  tax_amount DECIMAL(10,2) DEFAULT 0,
+  payment_method TEXT,
+  status TEXT DEFAULT 'completed',
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Order Items
+CREATE TABLE IF NOT EXISTS order_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
+  product_id UUID REFERENCES products(id),
+  service_id UUID REFERENCES services(id),
+  quantity INTEGER NOT NULL,
+  unit_price DECIMAL(10,2) NOT NULL,
+  total_price DECIMAL(10,2) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Membership Plans
 CREATE TABLE IF NOT EXISTS membership_plans (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -163,3 +189,32 @@ CREATE POLICY "Customers can create bookings" ON bookings
 
 CREATE POLICY "Staff can manage their bookings" ON bookings
   FOR UPDATE USING (staff_id = auth.uid() OR business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
+
+-- 3.7 Orders Policies
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Staff can view orders of their business" ON orders
+  FOR SELECT USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
+
+CREATE POLICY "Staff can insert orders" ON orders
+  FOR INSERT WITH CHECK (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
+
+-- 3.8 Order Items Policies
+ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Staff can view order items" ON order_items
+  FOR SELECT USING (order_id IN (SELECT id FROM orders WHERE business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid())));
+
+-- Staff can manage their order items
+CREATE POLICY "Staff can insert order items" ON order_items
+  FOR INSERT WITH CHECK (order_id IN (SELECT id FROM orders WHERE business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid())));
+
+-- 4. FUNCTIONS & RPCs
+
+-- Atomic stock decrement
+CREATE OR REPLACE FUNCTION decrement_stock(p_id UUID, amount INTEGER)
+RETURNS void AS $$
+BEGIN
+  UPDATE products
+  SET stock_quantity = stock_quantity - amount
+  WHERE id = p_id;
+END;
+$$ LANGUAGE plpgsql;

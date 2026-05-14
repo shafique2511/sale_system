@@ -38,6 +38,10 @@ export const DashboardLayout = () => {
     return <Navigate to="/auth/login" replace />;
   }
 
+  if (!profile?.business_id && window.location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <Sidebar className="hidden md:flex w-64 flex-col shrink-0" />

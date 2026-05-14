@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Table, 
   TableBody, 
@@ -23,14 +23,52 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Filter
+  Filter,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
-import { mockBookings } from '@/constants/mockData';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { bookingService } from '@/services/bookingService';
 
 export const BookingsPage = () => {
+  const { businessId } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = async () => {
+    if (!businessId) return;
+    setLoading(true);
+    try {
+      const data = await bookingService.getBookings(businessId);
+      setBookings(data);
+    } catch (error) {
+      toast.error('Failed to load bookings');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [businessId]);
+
+  const handleUpdateStatus = async (id: string, status: string) => {
+    try {
+      await bookingService.updateBookingStatus(id, status);
+      toast.success(`Booking ${status}`);
+      fetchData();
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
+  };
+
+  const filteredBookings = bookings.filter(b => 
+    b.customer?.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    b.service?.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -42,6 +80,14 @@ export const BookingsPage = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -50,6 +96,10 @@ export const BookingsPage = () => {
           <p className="text-muted-foreground">Manage all appointments and service requests.</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={fetchData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
           <Button variant="outline" className="gap-2">
             <Calendar className="h-4 w-4" />
             Calendar View
@@ -76,11 +126,6 @@ export const BookingsPage = () => {
             <Filter className="h-4 w-4" />
             Filter
           </Button>
-          <div className="flex border rounded-md p-1 bg-muted/30">
-            <Button variant="ghost" size="sm" className="h-7 px-3 bg-background shadow-sm">All</Button>
-            <Button variant="ghost" size="sm" className="h-7 px-3">Today</Button>
-            <Button variant="ghost" size="sm" className="h-7 px-3">Upcoming</Button>
-          </div>
         </div>
       </div>
 
@@ -98,22 +143,22 @@ export const BookingsPage = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockBookings.map((booking) => (
+            {filteredBookings.map((booking) => (
               <TableRow key={booking.id}>
-                <TableCell className="font-medium">{booking.customer}</TableCell>
-                <TableCell>{booking.service}</TableCell>
+                <TableCell className="font-medium">{booking.customer?.name || 'Walk-in'}</TableCell>
+                <TableCell>{booking.service?.name}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
-                      {booking.staff.charAt(0)}
+                      {booking.staff?.full_name?.charAt(0) || 'U'}
                     </div>
-                    {booking.staff}
+                    {booking.staff?.full_name || 'Unassigned'}
                   </div>
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium">{booking.time}</span>
-                    <span className="text-xs text-muted-foreground">{booking.date}</span>
+                    <span className="text-sm font-medium">{booking.start_time}</span>
+                    <span className="text-xs text-muted-foreground">{new Date(booking.booking_date).toLocaleDateString()}</span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -121,7 +166,7 @@ export const BookingsPage = () => {
                     {booking.status}
                   </Badge>
                 </TableCell>
-                <TableCell className="font-bold">${booking.price.toFixed(2)}</TableCell>
+                <TableCell className="font-bold">${Number(booking.total_price).toFixed(2)}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger render={
@@ -130,23 +175,27 @@ export const BookingsPage = () => {
                       </Button>
                     } />
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem className="gap-2" onClick={() => toast.success('Booking confirmed')}>
+                      <DropdownMenuItem className="gap-2" onClick={() => handleUpdateStatus(booking.id, 'confirmed')}>
                         <CheckCircle2 className="h-4 w-4 text-green-500" /> Confirm
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2" onClick={() => toast.info('Customer checked in')}>
-                        <Clock className="h-4 w-4 text-blue-500" /> Check In
+                      <DropdownMenuItem className="gap-2" onClick={() => handleUpdateStatus(booking.id, 'completed')}>
+                        <Clock className="h-4 w-4 text-blue-500" /> Complete
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2" onClick={() => toast.error('Booking cancelled')}>
+                      <DropdownMenuItem className="gap-2" onClick={() => handleUpdateStatus(booking.id, 'cancelled')}>
                         <XCircle className="h-4 w-4 text-red-500" /> Cancel
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="gap-2 border-t mt-1">
-                         Edit Details
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}
+            {filteredBookings.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                  No bookings found.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>

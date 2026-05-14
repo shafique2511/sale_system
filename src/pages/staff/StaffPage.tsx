@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Table, 
   TableBody, 
@@ -16,8 +16,9 @@ import {
   Calendar, 
   TrendingUp, 
   MoreVertical,
-  Mail,
-  MapPin
+  MapPin,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { 
   DropdownMenu, 
@@ -28,9 +29,40 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Card, CardContent } from '@/components/ui/card';
-import { mockStaff } from '@/constants/mockData';
+import { useAuth } from '@/hooks/useAuth';
+import { staffService } from '@/services/staffService';
+import { toast } from 'sonner';
 
 export const StaffPage = () => {
+  const { businessId } = useAuth();
+  const [staff, setStaff] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = async () => {
+    if (!businessId) return;
+    setLoading(true);
+    try {
+      const data = await staffService.getStaff(businessId);
+      setStaff(data);
+    } catch (error) {
+      toast.error('Failed to load staff');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [businessId]);
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -38,24 +70,29 @@ export const StaffPage = () => {
           <h1 className="text-3xl font-bold tracking-tight">Staff Management</h1>
           <p className="text-muted-foreground">Manage your team members, schedules, and commission rates.</p>
         </div>
-        <Button className="gap-2">
-          <UserPlus className="h-4 w-4" />
-          Onboard Staff
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={fetchData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button className="gap-2">
+            <UserPlus className="h-4 w-4" />
+            Onboard Staff
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {mockStaff.map((staff) => (
-          <Card key={staff.id} className="relative overflow-hidden group hover:border-primary/50 transition-colors">
+        {staff.map((member) => (
+          <Card key={member.id} className="relative overflow-hidden group hover:border-primary/50 transition-colors">
             <div 
-              className="absolute top-0 left-0 w-full h-1" 
-              style={{ backgroundColor: staff.color }}
+              className="absolute top-0 left-0 w-full h-1 bg-primary" 
             />
             <CardContent className="p-6">
               <div className="flex justify-between items-start">
-                <Avatar className="h-12 w-12 ring-2 ring-background ring-offset-2" style={{ backgroundColor: staff.color + '20' }}>
-                  <AvatarFallback className="font-bold" style={{ color: staff.color }}>
-                    {staff.name.charAt(0)}
+                <Avatar className="h-12 w-12 ring-2 ring-background ring-offset-2">
+                  <AvatarFallback className="font-bold bg-primary/10 text-primary">
+                    {member.full_name?.charAt(0) || 'U'}
                   </AvatarFallback>
                 </Avatar>
                 <DropdownMenu>
@@ -82,24 +119,20 @@ export const StaffPage = () => {
               </div>
               
               <div className="mt-4">
-                <h3 className="font-bold text-lg leading-tight">{staff.name}</h3>
-                <p className="text-sm text-muted-foreground">{staff.role}</p>
+                <h3 className="font-bold text-lg leading-tight">{member.full_name || 'Unnamed User'}</h3>
+                <p className="text-sm text-muted-foreground capitalize">{member.role}</p>
               </div>
 
               <div className="mt-6 space-y-3">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <MapPin className="h-3 w-3" />
-                  {staff.branch} Branch
-                </div>
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <TrendingUp className="h-3 w-3 text-green-500" />
-                  {staff.commission}% Commission Rate
+                  {member.branch?.name || 'Main'} Branch
                 </div>
               </div>
 
               <div className="mt-6 flex items-center justify-between">
-                <Badge variant={staff.status === 'Active' ? 'default' : 'outline'} className={staff.status === 'Active' ? 'bg-green-500 hover:bg-green-600' : ''}>
-                  {staff.status}
+                <Badge variant="default" className="bg-green-500 hover:bg-green-600">
+                  Active
                 </Badge>
                 <Button variant="outline" size="sm" className="h-8">Details</Button>
               </div>
@@ -118,20 +151,16 @@ export const StaffPage = () => {
             <TableRow>
               <TableHead>Staff Member</TableHead>
               <TableHead>Total Bookings</TableHead>
-              <TableHead>Service Sales</TableHead>
-              <TableHead>Product Sales</TableHead>
               <TableHead>Commission Earned</TableHead>
               <TableHead className="text-right">Action</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {mockStaff.slice(0, 3).map((staff) => (
-              <TableRow key={staff.id}>
-                <TableCell className="font-medium">{staff.name}</TableCell>
-                <TableCell>42</TableCell>
-                <TableCell>$1,240.00</TableCell>
-                <TableCell>$350.00</TableCell>
-                <TableCell className="text-green-600 font-bold">$385.00</TableCell>
+            {staff.slice(0, 5).map((member) => (
+              <TableRow key={member.id}>
+                <TableCell className="font-medium">{member.full_name || 'Unnamed'}</TableCell>
+                <TableCell>0</TableCell>
+                <TableCell className="text-green-600 font-bold">$0.00</TableCell>
                 <TableCell className="text-right">
                   <Button variant="ghost" size="sm">Report</Button>
                 </TableCell>

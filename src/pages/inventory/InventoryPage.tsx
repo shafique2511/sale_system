@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Table, 
   TableBody, 
@@ -18,7 +18,10 @@ import {
   ArrowUpDown,
   History,
   MoreVertical,
-  XCircle
+  XCircle,
+  Loader2,
+  RefreshCw,
+  Image as ImageIcon
 } from 'lucide-react';
 import { 
   DropdownMenu, 
@@ -28,26 +31,48 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { mockProducts } from '@/constants/mockData';
-
-interface InventoryItem {
-  id: string;
-  name: string;
-  price: number;
-  category: string;
-  image: string;
-  sku?: string;
-  stock_quantity?: number;
-}
+import { useAuth } from '@/hooks/useAuth';
+import { inventoryService, Product } from '@/services/inventoryService';
+import { toast } from 'sonner';
 
 export const InventoryPage = () => {
+  const { businessId } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
-  const products = mockProducts as InventoryItem[];
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = async () => {
+    if (!businessId) return;
+    setLoading(true);
+    try {
+      const data = await inventoryService.getProducts(businessId);
+      setProducts(data);
+    } catch (error) {
+      toast.error('Failed to load inventory');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [businessId]);
 
   const filteredItems = products.filter(item => 
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (item.sku && item.sku.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const lowStockItems = products.filter(p => p.stock_quantity <= p.low_stock_threshold);
+  const outOfStockItems = products.filter(p => p.stock_quantity === 0);
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -57,9 +82,9 @@ export const InventoryPage = () => {
           <p className="text-muted-foreground">Manage stock levels, suppliers, and product tracking.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <History className="h-4 w-4" />
-            Stock History
+          <Button variant="outline" size="sm" onClick={fetchData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
           </Button>
           <Button className="gap-2">
             <Plus className="h-4 w-4" />
@@ -76,7 +101,7 @@ export const InventoryPage = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground font-medium">Total Items</p>
-              <p className="text-2xl font-bold">{mockProducts.length}</p>
+              <p className="text-2xl font-bold">{products.length}</p>
             </div>
           </CardContent>
         </Card>
@@ -87,7 +112,7 @@ export const InventoryPage = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground font-medium">Low Stock Alerts</p>
-              <p className="text-2xl font-bold">3</p>
+              <p className="text-2xl font-bold">{lowStockItems.length}</p>
             </div>
           </CardContent>
         </Card>
@@ -98,7 +123,7 @@ export const InventoryPage = () => {
             </div>
             <div>
               <p className="text-sm text-muted-foreground font-medium">Out of Stock</p>
-              <p className="text-2xl font-bold">1</p>
+              <p className="text-2xl font-bold">{outOfStockItems.length}</p>
             </div>
           </CardContent>
         </Card>
@@ -138,30 +163,30 @@ export const InventoryPage = () => {
               <TableRow key={item.id}>
                 <TableCell>
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 bg-muted rounded overflow-hidden">
-                      <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
+                    <div className="h-10 w-10 bg-muted rounded flex items-center justify-center overflow-hidden border">
+                      <ImageIcon className="h-4 w-4 text-muted-foreground" />
                     </div>
                     <span className="font-medium">{item.name}</span>
                   </div>
                 </TableCell>
                 <TableCell>{item.category}</TableCell>
-                <TableCell className="font-mono text-xs text-muted-foreground">{item.sku || 'N/A'}</TableCell>
+                <TableCell className="font-mono text-xs text-muted-foreground">{item.sku || item.id.slice(0, 8)}</TableCell>
                 <TableCell>
                   <div className="flex flex-col gap-1 w-full max-w-[100px]">
                     <div className="flex justify-between text-[10px]">
-                      <span>{item.stock_quantity || 15} units</span>
-                      <span className="text-muted-foreground">Threshold: 5</span>
+                      <span>{item.stock_quantity} units</span>
+                      <span className="text-muted-foreground">Threshold: {item.low_stock_threshold}</span>
                     </div>
                     <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                       <div 
-                        className={cn("h-full rounded-full transition-all", (item.stock_quantity || 15) < 5 ? "bg-amber-500" : "bg-primary")} 
-                        style={{ width: `${Math.min(100, ((item.stock_quantity || 15) / 20) * 100)}%` }} 
+                        className={cn("h-full rounded-full transition-all", item.stock_quantity <= item.low_stock_threshold ? "bg-amber-500" : "bg-primary")} 
+                        style={{ width: `${Math.min(100, (item.stock_quantity / (item.low_stock_threshold * 4 || 20)) * 100)}%` }} 
                       />
                     </div>
                   </div>
                 </TableCell>
-                <TableCell>${(item.price * 0.6).toFixed(2)}</TableCell>
-                <TableCell className="font-bold">${item.price.toFixed(2)}</TableCell>
+                <TableCell>${item.cost_price.toFixed(2)}</TableCell>
+                <TableCell className="font-bold">${item.selling_price.toFixed(2)}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger render={
@@ -178,6 +203,13 @@ export const InventoryPage = () => {
                 </TableCell>
               </TableRow>
             ))}
+            {filteredItems.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  No inventory items found.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>

@@ -231,6 +231,76 @@ export interface Database {
           created_at?: string
         }
       }
+      orders: {
+        Row: {
+          id: string
+          business_id: string
+          branch_id: string
+          staff_id: string | null
+          customer_id: string | null
+          total_amount: number
+          tax_amount: number
+          payment_method: string | null
+          status: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          branch_id: string
+          staff_id?: string | null
+          customer_id?: string | null
+          total_amount: number
+          tax_amount?: number
+          payment_method?: string | null
+          status?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          branch_id?: string
+          staff_id?: string | null
+          customer_id?: string | null
+          total_amount?: number
+          tax_amount?: number
+          payment_method?: string | null
+          status?: string
+          created_at?: string
+        }
+      }
+      order_items: {
+        Row: {
+          id: string
+          order_id: string
+          product_id: string | null
+          service_id: string | null
+          quantity: number
+          unit_price: number
+          total_price: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          order_id: string
+          product_id?: string | null
+          service_id?: string | null
+          quantity: number
+          unit_price: number
+          total_price: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          order_id?: string
+          product_id?: string | null
+          service_id?: string | null
+          quantity?: number
+          unit_price?: number
+          total_price?: number
+          created_at?: string
+        }
+      }
     }
   }
 }

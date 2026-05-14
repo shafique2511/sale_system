@@ -8,21 +8,49 @@ type UserProfile = Database['public']['Tables']['user_profiles']['Row'];
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
+  businessId: string | null;
+  branchId: string | null;
   loading: boolean;
   signOut: () => Promise<void>;
+  refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   profile: null,
+  businessId: null,
+  branchId: null,
   loading: true,
   signOut: async () => {},
+  refreshProfile: async () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+      } else {
+        setProfile(data);
+      }
+    } catch (err) {
+      console.error('Profile fetch error:', err);
+    }
+  };
+
+  const refreshProfile = async () => {
+    if (user) await fetchProfile(user.id);
+  };
 
   useEffect(() => {
     // Check active sessions and subscribe to auth changes
@@ -51,30 +79,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchProfile = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) {
-        console.error('Error fetching profile:', error);
-      } else {
-        setProfile(data);
-      }
-    } catch (err) {
-      console.error('Profile fetch error:', err);
-    }
-  };
-
   const signOut = async () => {
     await supabase.auth.signOut();
   };
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signOut }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      profile, 
+      businessId: profile?.business_id || null,
+      branchId: profile?.branch_id || null,
+      loading, 
+      signOut,
+      refreshProfile
+    }}>
       {children}
     </AuthContext.Provider>
   );

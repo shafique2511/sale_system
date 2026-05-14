@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,40 +14,84 @@ import {
   CreditCard, 
   Banknote, 
   QrCode,
-  User
+  User,
+  Loader2,
+  RefreshCw,
+  Store
 } from 'lucide-react';
-import { mockProducts, mockCategories } from '@/constants/mockData';
+import { mockCategories } from '@/constants/mockData';
 import { toast } from 'sonner';
+import { inventoryService, Product, Service } from '@/services/inventoryService';
+import { posService } from '@/services/posService';
+import { useAuth } from '@/hooks/useAuth';
 
 interface CartItem {
   id: string;
   name: string;
   price: number;
   quantity: number;
+  type: 'product' | 'service';
 }
 
 export const POSPage = () => {
+  const { businessId, branchId, user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
 
-  const filteredProducts = mockProducts.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'All' || product.category === selectedCategory;
+  const fetchData = async () => {
+    if (!businessId) return;
+    setLoading(true);
+    try {
+      const [productsData, servicesData] = await Promise.all([
+        inventoryService.getProducts(businessId),
+        inventoryService.getServices(businessId)
+      ]);
+      setProducts(productsData);
+      setServices(servicesData);
+    } catch (error) {
+      toast.error('Failed to fetch items');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [businessId]);
+
+  const allItems = [
+    ...products.map(p => ({ ...p, type: 'product' as const })),
+    ...services.map(s => ({ ...s, type: 'service' as const, selling_price: s.price }))
+  ];
+
+  const filteredItems = allItems.filter(item => {
+    const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
-  const addToCart = (product: any) => {
+  const addToCart = (item: any) => {
     setCart(currentCart => {
-      const existingItem = currentCart.find(item => item.id === product.id);
+      const existingItem = currentCart.find(i => i.id === item.id);
       if (existingItem) {
-        return currentCart.map(item => 
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+        return currentCart.map(i => 
+          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
         );
       }
-      return [...currentCart, { id: product.id, name: product.name, price: product.price, quantity: 1 }];
+      return [...currentCart, { 
+        id: item.id, 
+        name: item.name, 
+        price: Number(item.selling_price || item.price), 
+        quantity: 1,
+        type: item.type
+      }];
     });
-    toast.success(`${product.name} added to cart`);
+    toast.success(`${item.name} added to cart`);
   };
 
   const removeFromCart = (id: string) => {
@@ -68,20 +112,60 @@ export const POSPage = () => {
   const tax = subtotal * 0.07;
   const total = subtotal + tax;
 
-  const handleCheckout = (method: string) => {
+  const handleCheckout = async (method: string) => {
+    if (!businessId || !branchId || !user) {
+      toast.error('Auth context missing');
+      return;
+    }
     if (cart.length === 0) {
       toast.error('Cart is empty');
       return;
     }
-    toast.success(`Payment processed via ${method}! Total: $${total.toFixed(2)}`);
-    setCart([]);
+
+    setProcessing(true);
+    try {
+      await posService.createOrder({
+        business_id: businessId,
+        branch_id: branchId,
+        staff_id: user.id,
+        total_amount: total,
+        tax_amount: tax,
+        payment_method: method,
+        status: 'completed'
+      }, cart.map(item => ({
+        [item.type === 'product' ? 'product_id' : 'service_id']: item.id,
+        quantity: item.quantity,
+        unit_price: item.price,
+        total_price: item.price * item.quantity
+      })));
+
+      toast.success(`Payment successful! Total: $${total.toFixed(2)}`);
+      setCart([]);
+      fetchData(); // Refresh stock
+    } catch (error: any) {
+      toast.error('Payment failed: ' + error.message);
+    } finally {
+      setProcessing(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] gap-6 animate-in fade-in slide-in-from-right-4 duration-500">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold tracking-tight">Point of Sale</h1>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={fetchData} className="h-8">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
           <Button variant="outline" size="sm" className="gap-2">
             <User className="h-4 w-4" />
             Select Customer
@@ -114,28 +198,37 @@ export const POSPage = () => {
 
           <ScrollArea className="flex-1 pr-4">
             <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 pb-4">
-              {filteredProducts.map((product) => (
+              {filteredItems.map((item) => (
                 <Card 
-                  key={product.id} 
+                  key={item.id} 
                   className="cursor-pointer hover:border-primary transition-all hover:bg-accent group overflow-hidden"
-                  onClick={() => addToCart(product)}
+                  onClick={() => addToCart(item)}
                 >
-                  <div className="aspect-video bg-muted relative overflow-hidden">
-                    <img 
-                      src={product.image} 
-                      alt={product.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-                    />
+                  <div className="aspect-video bg-muted relative overflow-hidden flex items-center justify-center">
+                    <Store className="h-8 w-8 text-muted-foreground group-hover:scale-110 transition-transform" />
                     <Badge className="absolute top-2 right-2 bg-background/80 text-foreground backdrop-blur-sm">
-                      ${product.price.toFixed(2)}
+                      ${((item as any).selling_price || (item as any).price || 0).toFixed(2)}
                     </Badge>
+                    {item.type === 'product' && (
+                      <Badge variant={item.stock_quantity > 5 ? 'secondary' : 'destructive'} className="absolute bottom-2 left-2 text-[10px]">
+                        Stock: {item.stock_quantity}
+                      </Badge>
+                    )}
                   </div>
                   <CardContent className="p-4">
-                    <p className="font-semibold text-sm truncate">{product.name}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{product.category}</p>
+                    <p className="font-semibold text-sm truncate">{item.name}</p>
+                    <p className="text-xs text-muted-foreground mt-1 flex items-center justify-between">
+                      <span>{item.category}</span>
+                      <span className="capitalize px-1.5 py-0.5 bg-muted rounded text-[10px]">{item.type}</span>
+                    </p>
                   </CardContent>
                 </Card>
               ))}
+              {filteredItems.length === 0 && (
+                <div className="col-span-full py-12 text-center text-muted-foreground">
+                  <p>No items found matching your filters.</p>
+                </div>
+              )}
             </div>
           </ScrollArea>
         </div>
@@ -170,17 +263,18 @@ export const POSPage = () => {
                         size="icon" 
                         className="h-7 w-7 text-destructive"
                         onClick={() => removeFromCart(item.id)}
+                        disabled={processing}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                     <div className="flex items-center justify-between mt-1">
                       <div className="flex items-center gap-1 border rounded-md">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.id, -1)}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.id, -1)} disabled={processing}>
                           <Minus className="h-3 w-3" />
                         </Button>
                         <span className="text-xs font-bold w-6 text-center">{item.quantity}</span>
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.id, 1)}>
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.id, 1)} disabled={processing}>
                           <Plus className="h-3 w-3" />
                         </Button>
                       </div>
@@ -212,16 +306,16 @@ export const POSPage = () => {
               <Button 
                 className="col-span-2 h-12 gap-2 text-lg font-bold" 
                 onClick={() => handleCheckout('Cash')}
-                disabled={cart.length === 0}
+                disabled={cart.length === 0 || processing}
               >
-                <Banknote className="h-5 w-5" />
-                Pay Cash
+                {processing ? <Loader2 className="h-5 w-5 animate-spin" /> : <Banknote className="h-5 w-5" />}
+                {processing ? 'Processing...' : 'Pay Cash'}
               </Button>
               <Button 
                 variant="outline" 
                 className="h-12 gap-2" 
                 onClick={() => handleCheckout('Card')}
-                disabled={cart.length === 0}
+                disabled={cart.length === 0 || processing}
               >
                 <CreditCard className="h-4 w-4" />
                 Card
@@ -230,7 +324,7 @@ export const POSPage = () => {
                 variant="outline" 
                 className="h-12 gap-2" 
                 onClick={() => handleCheckout('QR Scan')}
-                disabled={cart.length === 0}
+                disabled={cart.length === 0 || processing}
               >
                 <QrCode className="h-4 w-4" />
                 QR Pay

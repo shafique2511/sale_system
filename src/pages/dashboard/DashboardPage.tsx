@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   TrendingUp, 
   Users, 
@@ -8,7 +8,9 @@ import {
   Package, 
   ArrowUpRight,
   TrendingDown,
-  Activity
+  Activity,
+  Loader2,
+  ShoppingCart
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { AIInsights } from '@/components/dashboard/AIInsights';
@@ -23,30 +25,48 @@ import {
   CartesianGrid, 
   Tooltip, 
   ResponsiveContainer, 
-  LineChart, 
-  Line,
-  Cell,
-  PieChart,
-  Pie
 } from 'recharts';
-
-const data = [
-  { name: 'Mon', revenue: 4000, bookings: 24 },
-  { name: 'Tue', revenue: 3000, bookings: 18 },
-  { name: 'Wed', revenue: 2000, bookings: 12 },
-  { name: 'Thu', revenue: 2780, bookings: 20 },
-  { name: 'Fri', revenue: 1890, bookings: 15 },
-  { name: 'Sat', revenue: 2390, bookings: 25 },
-  { name: 'Sun', revenue: 3490, bookings: 30 },
-];
-
-const statusData = [
-  { name: 'Completed', value: 400, color: '#10b981' },
-  { name: 'Pending', value: 300, color: '#f59e0b' },
-  { name: 'Cancelled', value: 100, color: '#ef4444' },
-];
+import { useAuth } from '@/hooks/useAuth';
+import { posService } from '@/services/posService';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export const DashboardPage = () => {
+  const { businessId } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<any>(null);
+  const [recentOrders, setRecentOrders] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!businessId) return;
+      setLoading(true);
+      try {
+        const [dashboardStats, orders] = await Promise.all([
+          posService.getDashboardStats(businessId),
+          posService.getRecentOrders(businessId, 5)
+        ]);
+        setStats(dashboardStats);
+        setRecentOrders(orders);
+      } catch (error) {
+        toast.error('Failed to load dashboard data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [businessId]);
+
+  if (loading || !stats) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex flex-col gap-2">
@@ -57,46 +77,46 @@ export const DashboardPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard 
           title="Total Sales" 
-          value="$12,845" 
-          description="from last month" 
+          value={`$${stats.totalSales.toFixed(2)}`} 
+          description="Lifetime revenue" 
           icon={<TrendingUp className="h-4 w-4" />}
-          trend={{ value: 12.5, isUp: true }}
+          trend={{ value: 0, isUp: true }}
         />
         <StatCard 
           title="Total Bookings" 
-          value="148" 
-          description="from last month" 
+          value={stats.bookingsCount.toString()} 
+          description="All-time appointments" 
           icon={<Calendar className="h-4 w-4" />}
-          trend={{ value: 4.2, isUp: true }}
+          trend={{ value: 0, isUp: true }}
         />
         <StatCard 
-          title="Active Members" 
-          value="42" 
-          description="new this month" 
-          icon={<Users className="h-4 w-4" />}
-          trend={{ value: 18, isUp: true }}
+          title="Products/Services" 
+          value={stats.inventoryCount.toString()} 
+          description="Active catalog items" 
+          icon={<Package className="h-4 w-4" />}
+          trend={{ value: 0, isUp: true }}
         />
         <StatCard 
           title="Completion Rate" 
-          value="94.2%" 
-          description="average this week" 
+          value="100%" 
+          description="Service accuracy" 
           icon={<CheckCircle className="h-4 w-4" />}
-          trend={{ value: 2.1, isUp: false }}
+          trend={{ value: 0, isUp: true }}
         />
       </div>
 
       <AIInsights />
 
       <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
-        <Card className="lg:col-span-4">
+        <Card className="lg:col-span-12">
           <CardHeader>
             <CardTitle>Revenue Overview</CardTitle>
-            <CardDescription>Daily revenue breakdown for the current week.</CardDescription>
+            <CardDescription>Daily revenue breakdown for the last 7 days.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-[350px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data}>
+                <BarChart data={stats.recentOrders && stats.recentOrders.length > 0 ? stats.recentOrders : stats.revenueChart}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" fontSize={12} tickLine={false} axisLine={false} />
                   <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
@@ -109,75 +129,37 @@ export const DashboardPage = () => {
             </div>
           </CardContent>
         </Card>
-
-        <Card className="lg:col-span-3">
-          <CardHeader>
-            <CardTitle>Booking Status</CardTitle>
-            <CardDescription>Breakdown of all bookings by status.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[350px] w-full flex flex-col items-center justify-center">
-              <ResponsiveContainer width="100%" height="80%">
-                <PieChart>
-                  <Pie
-                    data={statusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {statusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="grid grid-cols-3 gap-4 w-full mt-4">
-                {statusData.map((item) => (
-                  <div key={item.name} className="flex flex-col items-center gap-1">
-                    <div className="flex items-center gap-2">
-                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: item.color }} />
-                      <span className="text-xs text-muted-foreground">{item.name}</span>
-                    </div>
-                    <span className="text-sm font-bold">{item.value}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest events happening in your business.</CardDescription>
+            <CardDescription>Latest sales happening in your business.</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {[
-                { user: 'Sarah Johnson', action: 'booked a Classic Haircut', time: '2 mins ago', icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-                { user: 'POS Terminal 1', action: 'Coffee & Sandwich Sale - $18.50', time: '15 mins ago', icon: TrendingUp, color: 'text-green-500', bg: 'bg-green-500/10' },
-                { user: 'Mike Peters', action: 'Check-in: Beard Trim', time: '1 hour ago', icon: Clock, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-                { user: 'Inventory System', action: 'Low Stock Alert: Hair Wax', time: '2 hours ago', icon: Package, color: 'text-red-500', bg: 'bg-red-500/10' },
-              ].map((item, i) => (
-                <div key={i} className="flex items-start gap-4">
-                  <div className={cn("mt-1 p-2 rounded-full", item.bg)}>
-                    <item.icon className={cn("h-4 w-4", item.color)} />
+              {recentOrders.map((order, i) => (
+                <div key={order.id} className="flex items-start gap-4">
+                  <div className="mt-1 p-2 rounded-full bg-green-500/10">
+                    <ShoppingCart className="h-4 w-4 text-green-500" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium">{item.user}</p>
-                    <p className="text-sm text-muted-foreground">{item.action}</p>
+                    <p className="text-sm font-medium">Order #{order.id.slice(0, 8)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Sale via {order.payment_method || 'Cash'} — ${Number(order.total_amount).toFixed(2)}
+                    </p>
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {item.time}
+                    {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </div>
                 </div>
               ))}
+              {recentOrders.length === 0 && (
+                <div className="py-12 text-center text-muted-foreground">
+                  <p>No recent activity. Start by making a sale in the POS!</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -188,15 +170,15 @@ export const DashboardPage = () => {
             <CardDescription>Frequently used operations.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2">
-            <Button variant="outline" className="justify-start gap-2 h-12">
+            <Button variant="outline" className="justify-start gap-2 h-12" onClick={() => navigate('/pos')}>
               <ArrowUpRight className="h-4 w-4" />
               New POS Order
             </Button>
-            <Button variant="outline" className="justify-start gap-2 h-12">
+            <Button variant="outline" className="justify-start gap-2 h-12" onClick={() => navigate('/bookings')}>
               <Calendar className="h-4 w-4" />
               Book Appointment
             </Button>
-            <Button variant="outline" className="justify-start gap-2 h-12">
+            <Button variant="outline" className="justify-start gap-2 h-12" onClick={() => navigate('/inventory')}>
               <Package className="h-4 w-4" />
               Inventory Count
             </Button>

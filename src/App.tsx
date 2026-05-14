@@ -16,6 +16,7 @@ import { MembersPage } from './pages/memberships/MembersPage';
 import { LoyaltyPage } from './pages/loyalty/LoyaltyPage';
 import { RewardsPage } from './pages/loyalty/RewardsPage';
 import { ReportsPage } from './pages/reports/ReportsPage';
+import { OnboardingPage } from './pages/onboarding/OnboardingPage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { RegisterPage } from './pages/auth/RegisterPage';
 import { ProductsPage } from './pages/inventory/ProductsPage';
@@ -44,6 +45,7 @@ export default function App() {
           <Routes>
             <Route path="/auth/login" element={<LoginPage />} />
             <Route path="/auth/register" element={<RegisterPage />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
             
             <Route element={<DashboardLayout />}>
               <Route path="/" element={<Navigate to="/dashboard" replace />} />

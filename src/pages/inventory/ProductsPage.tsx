@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Table, 
   TableBody, 
@@ -16,7 +16,9 @@ import {
   Tag, 
   Filter,
   MoreVertical,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
 import { 
   DropdownMenu, 
@@ -25,14 +27,83 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { mockProducts } from '@/constants/mockData';
+import { useAuth } from '@/hooks/useAuth';
+import { inventoryService, Product, Service } from '@/services/inventoryService';
+import { toast } from 'sonner';
 
 export const ProductsPage = () => {
+  const { businessId } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  
+  // Quick Add state
+  const [quickName, setQuickName] = useState('');
+  const [quickPrice, setQuickPrice] = useState('');
+  const [adding, setAdding] = useState(false);
 
-  const filteredItems = mockProducts.filter(item => 
+  const fetchData = async () => {
+    if (!businessId) return;
+    setLoading(true);
+    try {
+      const [p, s] = await Promise.all([
+        inventoryService.getProducts(businessId),
+        inventoryService.getServices(businessId)
+      ]);
+      setProducts(p);
+      setServices(s);
+    } catch (error) {
+      toast.error('Failed to load catalog');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [businessId]);
+
+  const allItems = [
+    ...products.map(p => ({ ...p, type: 'product' as const })),
+    ...services.map(s => ({ ...s, type: 'service' as const, selling_price: s.price }))
+  ];
+
+  const filteredItems = allItems.filter(item => 
     item.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleQuickAdd = async () => {
+    if (!businessId || !quickName || !quickPrice) return;
+    setAdding(true);
+    try {
+      await inventoryService.createProduct({
+        business_id: businessId,
+        name: quickName,
+        selling_price: parseFloat(quickPrice),
+        cost_price: parseFloat(quickPrice) * 0.6,
+        stock_quantity: 10,
+        category: 'Product',
+        is_active: true
+      });
+      toast.success('Product created!');
+      setQuickName('');
+      setQuickPrice('');
+      fetchData();
+    } catch (error: any) {
+      toast.error('Failed to create: ' + error.message);
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -42,9 +113,9 @@ export const ProductsPage = () => {
           <p className="text-muted-foreground">Manage your catalog of items and professional services.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
-            <Tag className="h-4 w-4" />
-            Categories
+          <Button variant="outline" size="sm" onClick={fetchData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
           </Button>
           <Button className="gap-2">
             <Plus className="h-4 w-4" />
@@ -78,7 +149,7 @@ export const ProductsPage = () => {
                   <TableHead>Product/Service</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Price</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -88,15 +159,11 @@ export const ProductsPage = () => {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 bg-muted rounded flex items-center justify-center overflow-hidden border">
-                          {item.image ? (
-                            <img src={item.image} alt={item.name} className="h-full w-full object-cover" />
-                          ) : (
-                            <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                          )}
+                          <ImageIcon className="h-4 w-4 text-muted-foreground" />
                         </div>
                         <div className="flex flex-col">
                           <span className="font-bold text-sm">{item.name}</span>
-                          <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{item.id}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase tracking-widest">{item.id.slice(0, 8)}</span>
                         </div>
                       </div>
                     </TableCell>
@@ -104,13 +171,10 @@ export const ProductsPage = () => {
                       <Badge variant="secondary" className="font-normal">{item.category}</Badge>
                     </TableCell>
                     <TableCell className="font-bold text-primary">
-                      ${item.price.toFixed(2)}
+                      ${(item as any).selling_price?.toFixed(2) || (item as any).price?.toFixed(2)}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                        <span className="text-xs">Active</span>
-                      </div>
+                      <Badge variant="outline" className="capitalize">{item.type}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -136,19 +200,22 @@ export const ProductsPage = () => {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Category Distribution</CardTitle>
+              <CardTitle className="text-lg">Stats</CardTitle>
               <CardDescription>Composition of your catalog.</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {['Coffee', 'Service', 'Product', 'Food'].map((cat) => (
-                  <div key={cat} className="flex items-center justify-between">
+                {[
+                  { name: 'Products', count: products.length },
+                  { name: 'Services', count: services.length }
+                ].map((stat) => (
+                  <div key={stat.name} className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm">
                       <div className="h-3 w-3 rounded-full bg-primary/20 border border-primary/40" />
-                      {cat}
+                      {stat.name}
                     </div>
                     <span className="text-xs font-bold bg-muted px-2 py-0.5 rounded">
-                      {mockProducts.filter(p => p.category === cat).length}
+                      {stat.count}
                     </span>
                   </div>
                 ))}
@@ -160,20 +227,37 @@ export const ProductsPage = () => {
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Plus className="h-5 w-5 text-primary" />
-                Quick Add
+                Quick Add Product
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div>
                   <label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Name</label>
-                  <Input placeholder="Enter product name" className="bg-background" />
+                  <Input 
+                    placeholder="Enter product name" 
+                    className="bg-background" 
+                    value={quickName}
+                    onChange={e => setQuickName(e.target.value)}
+                  />
                 </div>
                 <div>
                    <label className="text-[10px] font-bold uppercase text-muted-foreground ml-1">Price ($)</label>
-                   <Input placeholder="0.00" type="number" className="bg-background" />
+                   <Input 
+                    placeholder="0.00" 
+                    type="number" 
+                    className="bg-background" 
+                    value={quickPrice}
+                    onChange={e => setQuickPrice(e.target.value)}
+                  />
                 </div>
-                <Button className="w-full mt-2">Create Record</Button>
+                <Button 
+                  className="w-full mt-2" 
+                  onClick={handleQuickAdd}
+                  disabled={adding || !quickName || !quickPrice}
+                >
+                  {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create Record'}
+                </Button>
               </div>
             </CardContent>
           </Card>
