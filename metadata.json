@@ -1,0 +1,8 @@
+{
+  "name": "OmniBiz - All-in-One Business Management",
+  "description": "Complete AI-powered membership, booking, POS, inventory, loyalty, and customer management system with intelligent business insights and automated assistant.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": []
+}

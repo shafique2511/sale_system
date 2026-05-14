@@ -1,0 +1,165 @@
+-- OMNIBIZ SUPABASE SCHEMA
+-- Run this in your Supabase SQL Editor
+
+-- 1. EXTENSIONS
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 2. TABLES
+
+-- Businesses
+CREATE TABLE IF NOT EXISTS businesses (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  logo_url TEXT,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Branches
+CREATE TABLE IF NOT EXISTS branches (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  address TEXT,
+  phone TEXT,
+  email TEXT,
+  is_main BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User Profiles (Linked to Supabase Auth)
+CREATE TABLE IF NOT EXISTS user_profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email TEXT NOT NULL,
+  full_name TEXT,
+  role TEXT CHECK (role IN ('owner', 'manager', 'staff', 'customer')) DEFAULT 'customer',
+  business_id UUID REFERENCES businesses(id),
+  branch_id UUID REFERENCES branches(id),
+  avatar_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Services
+CREATE TABLE IF NOT EXISTS services (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  duration_minutes INTEGER NOT NULL,
+  category TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Products
+CREATE TABLE IF NOT EXISTS products (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  sku TEXT,
+  barcode TEXT,
+  description TEXT,
+  cost_price DECIMAL(10,2) NOT NULL,
+  selling_price DECIMAL(10,2) NOT NULL,
+  stock_quantity INTEGER DEFAULT 0,
+  low_stock_threshold INTEGER DEFAULT 5,
+  category TEXT,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Bookings
+CREATE TABLE IF NOT EXISTS bookings (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+  branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
+  customer_id UUID REFERENCES user_profiles(id),
+  staff_id UUID REFERENCES user_profiles(id),
+  service_id UUID REFERENCES services(id),
+  start_time TIMESTAMPTZ NOT NULL,
+  end_time TIMESTAMPTZ NOT NULL,
+  status TEXT CHECK (status IN ('pending', 'confirmed', 'checked_in', 'in_progress', 'completed', 'cancelled', 'no_show')) DEFAULT 'pending',
+  total_price DECIMAL(10,2) NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Membership Plans
+CREATE TABLE IF NOT EXISTS membership_plans (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  type TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  duration_days INTEGER,
+  visit_limit INTEGER,
+  credit_amount DECIMAL(10,2),
+  discount_percentage INTEGER,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 3. RLS POLICIES (BASIC)
+ALTER TABLE businesses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE branches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE membership_plans ENABLE ROW LEVEL SECURITY;
+
+-- 3.1 Businesses Policies
+CREATE POLICY "Users can view their own business" ON businesses
+  FOR SELECT USING (id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
+
+CREATE POLICY "Authenticated users can create a business" ON businesses
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "Owners can update their own business" ON businesses
+  FOR UPDATE USING (id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role = 'owner'));
+
+-- 3.2 User Profiles Policies
+CREATE POLICY "Users can view their own profile" ON user_profiles
+  FOR SELECT USING (id = auth.uid());
+
+CREATE POLICY "Users can insert their own profile" ON user_profiles
+  FOR INSERT WITH CHECK (id = auth.uid());
+
+CREATE POLICY "Users can update their own profile" ON user_profiles
+  FOR UPDATE USING (id = auth.uid());
+
+-- 3.3 Branches Policies (Owned by business)
+CREATE POLICY "Users can view branches of their business" ON branches
+  FOR SELECT USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
+
+CREATE POLICY "Owners can manage branches" ON branches
+  FOR ALL USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role = 'owner'));
+
+-- 3.4 Services Policies
+CREATE POLICY "Anyone can view active services" ON services
+  FOR SELECT USING (is_active = true);
+
+CREATE POLICY "Managers and owners can manage services" ON services
+  FOR ALL USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
+
+-- 3.5 Products Policies
+CREATE POLICY "Staff can view products" ON products
+  FOR SELECT USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
+
+CREATE POLICY "Managers and owners can manage products" ON products
+  FOR ALL USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
+
+-- 3.6 Bookings Policies
+CREATE POLICY "Users can view their own bookings" ON bookings
+  FOR SELECT USING (customer_id = auth.uid() OR staff_id = auth.uid() OR business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
+
+CREATE POLICY "Customers can create bookings" ON bookings
+  FOR INSERT WITH CHECK (customer_id = auth.uid());
+
+CREATE POLICY "Staff can manage their bookings" ON bookings
+  FOR UPDATE USING (staff_id = auth.uid() OR business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
