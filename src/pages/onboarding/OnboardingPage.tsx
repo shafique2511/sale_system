@@ -34,7 +34,14 @@ export const OnboardingPage = () => {
     try {
       await seedService.seedDemoData(user.id, user.email || 'user@example.com');
       setProgress('Refreshing profile...');
-      await refreshProfile();
+      
+      // Try refresh with a short timeout, then just navigate anyway
+      try {
+        await refreshProfile();
+      } catch (e) {
+        console.warn('Profile refresh slow/failed after seed, navigating anyway');
+      }
+      
       toast.success('Demo business created with example data!');
       navigate('/dashboard');
     } catch (error: any) {

@@ -5,13 +5,17 @@ import { mockProducts } from '@/constants/mockData';
 
 export const seedService = {
   async seedDemoData(userId: string, email: string) {
+    console.log('Starting seedDemoData for:', { userId, email });
     try {
       // 1. Create a business
+      console.log('Creating business...');
       const business = await businessService.createBusiness('OmniBiz Demo Shop', 'Coffee & Style');
+      console.log('Business created:', business.id);
 
       // 2. Update current user profile with business_id and owner role first
       // This is CRITICAL for RLS policies on branches, products, etc. to pass
       // Using upsert to ensure the profile exists
+      console.log('Upserting user profile with business_id...');
       const { error: initialProfileError } = await supabase
         .from('user_profiles')
         .upsert({
@@ -22,10 +26,16 @@ export const seedService = {
           full_name: email.split('@')[0]
         });
 
-      if (initialProfileError) throw initialProfileError;
+      if (initialProfileError) {
+        console.error('Initial profile error:', initialProfileError);
+        throw initialProfileError;
+      }
+      console.log('Profile upserted successfully');
 
       // 3. Create a main branch
+      console.log('Creating main branch...');
       const branch = await businessService.createBranch(business.id, 'Main Street', true);
+      console.log('Branch created:', branch.id);
 
       // 4. Update profile with branch_id
       const { error: finalProfileError } = await supabase
@@ -33,7 +43,11 @@ export const seedService = {
         .update({ branch_id: branch.id })
         .eq('id', userId);
 
-      if (finalProfileError) throw finalProfileError;
+      if (finalProfileError) {
+        console.error('Final profile error:', finalProfileError);
+        throw finalProfileError;
+      }
+      console.log('Profile updated with branch_id successfully');
 
       // 5. Seed products and services
       for (const item of mockProducts) {

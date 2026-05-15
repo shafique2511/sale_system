@@ -91,8 +91,17 @@ export const DashboardPage = () => {
 
   if (authLoading || loading) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="h-full flex flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Loading your business data...</p>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => window.location.reload()}
+          className="mt-4"
+        >
+          Taking too long? Click to retry
+        </Button>
       </div>
     );
   }
