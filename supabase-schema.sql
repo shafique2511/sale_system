@@ -219,8 +219,11 @@ CREATE POLICY "Anyone can view active services" ON services
 CREATE POLICY "Authenticated users can insert services" ON services
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
-CREATE POLICY "Managers and owners can manage services" ON services
-  FOR UPDATE OR DELETE USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
+CREATE POLICY "Managers and owners can update services" ON services
+  FOR UPDATE USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
+
+CREATE POLICY "Managers and owners can delete services" ON services
+  FOR DELETE USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
 
 -- 3.5 Products Policies
 CREATE POLICY "Authenticated users can view products" ON products
@@ -229,8 +232,11 @@ CREATE POLICY "Authenticated users can view products" ON products
 CREATE POLICY "Authenticated users can insert products" ON products
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
-CREATE POLICY "Managers and owners can manage products" ON products
-  FOR UPDATE OR DELETE USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
+CREATE POLICY "Managers and owners can update products" ON products
+  FOR UPDATE USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
+
+CREATE POLICY "Managers and owners can delete products" ON products
+  FOR DELETE USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
 
 -- 3.6 Bookings Policies
 CREATE POLICY "Users can view their own bookings" ON bookings
