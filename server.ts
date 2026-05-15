@@ -1,8 +1,12 @@
 import express from "express";
 import path from "path";
+import { fileURLToPath } from "url";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -17,7 +21,7 @@ async function startServer() {
     res.json({ status: "ok" });
   });
 
-  // API Routes
+    // API Routes
   app.post("/api/ai/insights", async (req, res) => {
     try {
       const { context } = req.body;
@@ -26,11 +30,12 @@ async function startServer() {
         return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
       }
 
-      const genAI = new GoogleGenAI({ apiKey });
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
-        generationConfig: {
-          responseMimeType: "application/json",
+      const ai = new GoogleGenAI({ 
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
         }
       });
       
@@ -41,9 +46,15 @@ async function startServer() {
         Business Context:
         ${context}`;
 
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      res.json(JSON.parse(response.text() || "[]"));
+      const result = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+        }
+      });
+
+      res.json(JSON.parse(result.text || "[]"));
     } catch (error) {
       console.error("AI Insights Error:", error);
       res.status(500).json({ error: "Failed to generate insights" });
@@ -58,20 +69,29 @@ async function startServer() {
         return res.status(500).json({ error: "GEMINI_API_KEY not configured" });
       }
 
-      const genAI = new GoogleGenAI({ apiKey });
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
-        systemInstruction: `You are OmniAssistant, the intelligent helper for the OmniBiz management platform. 
-          You have access to the business's current state. 
-          Help the user with their questions about their business, inventory, staff, or customers.
-          Be professional, helpful, and concise.
-          
-          Context: ${context}`,
+      const ai = new GoogleGenAI({ 
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build',
+          }
+        }
       });
 
-      const result = await model.generateContent(question);
-      const response = await result.response;
-      res.json({ text: response.text() });
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: question,
+        config: {
+          systemInstruction: `You are OmniAssistant, the intelligent helper for the OmniBiz management platform. 
+            You have access to the business's current state. 
+            Help the user with their questions about their business, inventory, staff, or customers.
+            Be professional, helpful, and concise.
+            
+            Context: ${context}`,
+        }
+      });
+
+      res.json({ text: response.text });
     } catch (error) {
       console.error("AI Chat Error:", error);
       res.status(500).json({ error: "Failed to process chat" });
@@ -85,8 +105,26 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
+    
+    // Explicitly handle SPA fallback for dev mode
+    app.use("*", async (req, res, next) => {
+      const url = req.originalUrl;
+      try {
+        const fs = await import("fs");
+        let template = fs.readFileSync(path.resolve(process.cwd(), "index.html"), "utf-8");
+        template = await vite.transformIndexHtml(url, template);
+        res.status(200).set({ "Content-Type": "text/html" }).end(template);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   } else {
-    const distPath = path.join(process.cwd(), "dist");
+    const isProduction = process.env.NODE_ENV === "production";
+    const distPath = isProduction 
+      ? path.resolve(__dirname) 
+      : path.resolve(__dirname, "dist");
+    
     app.use(express.static(distPath));
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
