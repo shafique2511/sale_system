@@ -9,23 +9,33 @@ export const seedService = {
       // 1. Create a business
       const business = await businessService.createBusiness('OmniBiz Demo Shop', 'Coffee & Style');
 
-      // 2. Create a main branch
-      const branch = await businessService.createBranch(business.id, 'Main Street', true);
-
-      // 3. Update current user profile
-      const { error: profileError } = await supabase
+      // 2. Update current user profile with business_id and owner role first
+      // This is CRITICAL for RLS policies on branches, products, etc. to pass
+      // Using upsert to ensure the profile exists
+      const { error: initialProfileError } = await supabase
         .from('user_profiles')
-        .update({
+        .upsert({
+          id: userId,
+          email: email,
           business_id: business.id,
-          branch_id: branch.id,
           role: 'owner',
           full_name: email.split('@')[0]
-        })
+        });
+
+      if (initialProfileError) throw initialProfileError;
+
+      // 3. Create a main branch
+      const branch = await businessService.createBranch(business.id, 'Main Street', true);
+
+      // 4. Update profile with branch_id
+      const { error: finalProfileError } = await supabase
+        .from('user_profiles')
+        .update({ branch_id: branch.id })
         .eq('id', userId);
 
-      if (profileError) throw profileError;
+      if (finalProfileError) throw finalProfileError;
 
-      // 4. Seed products and services
+      // 5. Seed products and services
       for (const item of mockProducts) {
         if (item.category === 'Service') {
           await inventoryService.createService({

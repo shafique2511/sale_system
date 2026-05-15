@@ -183,8 +183,8 @@ CREATE POLICY "Customers can insert feedback" ON feedback
   FOR INSERT WITH CHECK (customer_id = auth.uid());
 
 -- 3.1 Businesses Policies
-CREATE POLICY "Users can view their own business" ON businesses
-  FOR SELECT USING (id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
+CREATE POLICY "Authenticated users can view businesses" ON businesses
+  FOR SELECT USING (auth.role() = 'authenticated');
 
 CREATE POLICY "Authenticated users can create a business" ON businesses
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
@@ -203,8 +203,11 @@ CREATE POLICY "Users can update their own profile" ON user_profiles
   FOR UPDATE USING (id = auth.uid());
 
 -- 3.3 Branches Policies (Owned by business)
-CREATE POLICY "Users can view branches of their business" ON branches
-  FOR SELECT USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
+CREATE POLICY "Authenticated users can view branches" ON branches
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can insert branches" ON branches
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 CREATE POLICY "Owners can manage branches" ON branches
   FOR ALL USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role = 'owner'));
@@ -213,15 +216,21 @@ CREATE POLICY "Owners can manage branches" ON branches
 CREATE POLICY "Anyone can view active services" ON services
   FOR SELECT USING (is_active = true);
 
+CREATE POLICY "Authenticated users can insert services" ON services
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
+
 CREATE POLICY "Managers and owners can manage services" ON services
-  FOR ALL USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
+  FOR UPDATE OR DELETE USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
 
 -- 3.5 Products Policies
-CREATE POLICY "Staff can view products" ON products
-  FOR SELECT USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
+CREATE POLICY "Authenticated users can view products" ON products
+  FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Authenticated users can insert products" ON products
+  FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
 CREATE POLICY "Managers and owners can manage products" ON products
-  FOR ALL USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
+  FOR UPDATE OR DELETE USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
 
 -- 3.6 Bookings Policies
 CREATE POLICY "Users can view their own bookings" ON bookings
