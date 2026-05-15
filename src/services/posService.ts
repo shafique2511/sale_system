@@ -89,86 +89,90 @@ export const posService = {
   },
 
   async getDashboardStats(businessId: string) {
-    // 1. Total sales (lifetime or maybe current month)
-    const { data: salesData, error: salesError } = await supabase
-      .from('orders')
-      .select('total_amount')
-      .eq('business_id', businessId);
-    
-    if (salesError) throw salesError;
-    const totalSales = (salesData || []).reduce((sum, order) => sum + Number(order.total_amount), 0);
+    // Helper to run query and return empty data on error
+    const safeQuery = async (query: any) => {
+      try {
+        const { data, count, error } = await query;
+        if (error) {
+          console.warn('Dashboard Query Warning:', error);
+          return { data: null, count: 0, error };
+        }
+        return { data, count, error: null };
+      } catch (err) {
+        console.warn('Dashboard Query Catch:', err);
+        return { data: null, count: 0, error: err };
+      }
+    };
+
+    // 1. Total sales
+    const salesResult = await safeQuery(
+      supabase.from('orders').select('total_amount').eq('business_id', businessId)
+    );
+    const totalSales = (salesResult.data || []).reduce((sum: number, order: any) => sum + Number(order.total_amount), 0);
 
     // 2. Total bookings
-    const { count: bookingsCount, error: bookingsError } = await supabase
-      .from('bookings')
-      .select('*', { count: 'exact', head: true })
-      .eq('business_id', businessId);
-    
-    if (bookingsError) throw bookingsError;
+    const bookingsResult = await safeQuery(
+      supabase.from('bookings').select('*', { count: 'exact', head: true }).eq('business_id', businessId)
+    );
 
     // 3. Active products/services
-    const { count: inventoryCount, error: inventoryError } = await supabase
-      .from('products')
-      .select('*', { count: 'exact', head: true })
-      .eq('business_id', businessId);
-    
-    if (inventoryError) throw inventoryError;
+    const inventoryResult = await safeQuery(
+      supabase.from('products').select('*', { count: 'exact', head: true }).eq('business_id', businessId)
+    );
 
     // 4. Revenue data for chart (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
-    const { data: chartData, error: chartError } = await supabase
-      .from('orders')
-      .select('total_amount, created_at')
-      .eq('business_id', businessId)
-      .gte('created_at', sevenDaysAgo.toISOString());
+    const chartResult = await safeQuery(
+      supabase.from('orders')
+        .select('total_amount, created_at')
+        .eq('business_id', businessId)
+        .gte('created_at', sevenDaysAgo.toISOString())
+    );
     
-    if (chartError) throw chartError;
-
     // Process chart data
     const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     const revenueByDay: Record<string, number> = {};
-    
-    // Initialize last 7 days with 0
     for (let i = 0; i < 7; i++) {
         const d = new Date();
         d.setDate(d.getDate() - i);
         revenueByDay[days[d.getDay()]] = 0;
     }
 
-    chartData?.forEach(order => {
-        const day = days[new Date(order.created_at).getDay()];
-        if (revenueByDay[day] !== undefined) {
-            revenueByDay[day] += Number(order.total_amount);
-        }
-    });
+    if (chartResult.data) {
+      chartResult.data.forEach((order: any) => {
+          const day = days[new Date(order.created_at).getDay()];
+          if (revenueByDay[day] !== undefined) {
+              revenueByDay[day] += Number(order.total_amount);
+          }
+      });
+    }
 
     const processedChartData = Object.entries(revenueByDay).map(([name, revenue]) => ({
         name,
         revenue
-    })).reverse(); // Oldest first
+    })).reverse();
 
     // 5. Feedback Stats
-    const { data: feedbackData, error: feedbackError } = await supabase
-      .from('feedback')
-      .select('rating, sentiment')
-      .eq('business_id', businessId);
+    const feedbackResult = await safeQuery(
+      supabase.from('feedback').select('rating, sentiment').eq('business_id', businessId)
+    );
     
     let averageRating = 0;
     let sentimentStats = { positive: 0, neutral: 0, negative: 0 };
 
-    if (!feedbackError && feedbackData && feedbackData.length > 0) {
-      averageRating = feedbackData.reduce((acc, f) => acc + f.rating, 0) / feedbackData.length;
-      feedbackData.forEach(f => {
+    if (feedbackResult.data && feedbackResult.data.length > 0) {
+      averageRating = feedbackResult.data.reduce((acc: number, f: any) => acc + f.rating, 0) / feedbackResult.data.length;
+      feedbackResult.data.forEach((f: any) => {
         if (f.sentiment) sentimentStats[f.sentiment as keyof typeof sentimentStats]++;
       });
     }
 
     return {
       totalSales,
-      bookingsCount: bookingsCount || 0,
-      inventoryCount: inventoryCount || 0,
+      bookingsCount: bookingsResult.count || 0,
+      inventoryCount: inventoryResult.count || 0,
       revenueChart: processedChartData,
       averageRating,
       sentimentStats

@@ -19,18 +19,30 @@ export const OnboardingPage = () => {
   const [businessType, setBusinessType] = useState('');
   const [mode, setMode] = useState<'selection' | 'create'>('selection');
 
+  const [progress, setProgress] = useState('');
+
   const handleSeedData = async () => {
     if (!user) return;
+    
+    if (import.meta.env.VITE_SUPABASE_URL?.includes('placeholder')) {
+      toast.error('Supabase is not configured. Please set your credentials in the environment.');
+      return;
+    }
+
     setLoading(true);
+    setProgress('Initializing business...');
     try {
       await seedService.seedDemoData(user.id, user.email || 'user@example.com');
+      setProgress('Refreshing profile...');
       await refreshProfile();
       toast.success('Demo business created with example data!');
       navigate('/dashboard');
     } catch (error: any) {
-      toast.error('Failed to create demo business: ' + error.message);
+      console.error('Seed Error:', error);
+      toast.error('Failed to create demo business: ' + (error.message || 'Check database connection'));
     } finally {
       setLoading(false);
+      setProgress('');
     }
   };
 
@@ -111,8 +123,17 @@ export const OnboardingPage = () => {
                     onClick={handleSeedData}
                     disabled={loading}
                   >
-                    {loading ? <Loader2 className="animate-spin" /> : <Sparkles className="h-5 w-5" />}
-                    Start with Demo Data
+                    {loading ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 className="animate-spin" />
+                        <span>{progress || 'Loading...'}</span>
+                      </div>
+                    ) : (
+                      <>
+                        <Sparkles className="h-5 w-5" />
+                        Start with Demo Data
+                      </>
+                    )}
                   </Button>
                   <Button 
                     variant="outline" 

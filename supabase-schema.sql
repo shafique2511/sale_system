@@ -13,6 +13,10 @@ CREATE TABLE IF NOT EXISTS businesses (
   type TEXT NOT NULL,
   logo_url TEXT,
   description TEXT,
+  email TEXT,
+  phone TEXT,
+  website TEXT,
+  loyalty_points_per_dollar INTEGER DEFAULT 1,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -39,6 +43,20 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   business_id UUID REFERENCES businesses(id),
   branch_id UUID REFERENCES branches(id),
   avatar_url TEXT,
+  points INTEGER DEFAULT 0,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Loyalty Rewards
+CREATE TABLE IF NOT EXISTS loyalty_rewards (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  description TEXT,
+  point_cost INTEGER NOT NULL,
+  reward_type TEXT DEFAULT 'discount',
+  is_active BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -301,5 +319,15 @@ BEGIN
   UPDATE products
   SET stock_quantity = stock_quantity - amount
   WHERE id = p_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Atomic points increment
+CREATE OR REPLACE FUNCTION increment_customer_points(c_id UUID, amount INTEGER)
+RETURNS void AS $$
+BEGIN
+  UPDATE user_profiles
+  SET points = COALESCE(points, 0) + amount
+  WHERE id = c_id;
 END;
 $$ LANGUAGE plpgsql;

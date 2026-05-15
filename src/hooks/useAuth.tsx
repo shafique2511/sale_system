@@ -35,14 +35,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      const profilePromise = supabase
         .from('user_profiles')
         .select('*')
         .eq('id', userId)
         .single();
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 8000)
+      );
+
+      const result = await Promise.race([profilePromise, timeoutPromise]) as any;
+      const { data, error } = result;
 
       if (error) {
-        console.error('Error fetching profile:', error);
+        if (error.code === 'PGRST116') {
+          console.warn('No profile found for user');
+        } else {
+          console.error('Error fetching profile:', error);
+        }
       } else {
         setProfile(data);
         setActiveBranchId(data.branch_id);

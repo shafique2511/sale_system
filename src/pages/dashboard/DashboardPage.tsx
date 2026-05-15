@@ -55,16 +55,41 @@ export const DashboardPage = () => {
         setStats(dashboardStats);
         setRecentOrders(orders);
       } catch (error) {
-        toast.error('Failed to load dashboard data');
+        console.error('Dashboard Fetch Error:', error);
+        toast.error('Failed to load dashboard data. Please check your database connection.');
+        // Set fallback stats to stop infinite loading
+        setStats({
+          totalSales: 0,
+          bookingsCount: 0,
+          inventoryCount: 0,
+          averageRating: 0,
+          sentimentStats: { positive: 0, neutral: 0, negative: 0 },
+          revenueChart: [],
+          recentOrders: []
+        });
       } finally {
         setLoading(false);
       }
     };
 
-    fetchData();
+    if (businessId) {
+      fetchData();
+    } else if (!loading) {
+      // If we finished loading auth but still have no businessId, we might need onboarding
+      // But we should wait for useAuth to finish its own loading first
+    }
   }, [businessId]);
 
-  if (loading || !stats) {
+  // Handle case where useAuth finished loading but businessId is still missing
+  const { loading: authLoading } = useAuth();
+  
+  useEffect(() => {
+    if (!authLoading && !businessId) {
+      navigate('/onboarding');
+    }
+  }, [authLoading, businessId, navigate]);
+
+  if (authLoading || loading) {
     return (
       <div className="h-full flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
