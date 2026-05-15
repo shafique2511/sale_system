@@ -81,6 +81,7 @@ export default function App() {
               <Route path="rewards" element={<PortalRewardsPage />} />
               <Route path="profile" element={<PortalProfilePage />} />
               <Route path="feedback" element={<PortalFeedbackPage />} />
+              <Route path="*" element={<Navigate to="." replace />} />
             </Route>
 
           </Routes>

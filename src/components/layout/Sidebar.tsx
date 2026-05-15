@@ -58,20 +58,18 @@ const adminMenu = [
   { name: 'License', href: '/license', icon: Key },
 ];
 
-const customerMenu = [
-  { name: 'Home', href: '/portal', icon: Store },
-  { name: 'Book Now', href: '/portal/book', icon: Calendar },
-  { name: 'My Bookings', href: '/portal/bookings', icon: History },
-  { name: 'Membership', href: '/portal/membership', icon: UserCircle },
-  { name: 'Rewards', href: '/portal/rewards', icon: Gift },
-  { name: 'Profile', href: '/portal/profile', icon: UserCircle },
-  { name: 'Feedback', href: '/portal/feedback', icon: MessageSquare },
-];
-
 export const Sidebar = ({ className, onClick, ...props }: SidebarProps & { onClick?: () => void }) => {
   const { profile, signOut } = useAuth();
   
-  const menu = profile?.role === 'customer' ? customerMenu : adminMenu;
+  const menu = profile?.role === 'customer' ? [
+    { name: 'Home', href: `/portal/${profile.business_id}`, icon: Store },
+    { name: 'Book Now', href: `/portal/${profile.business_id}/book`, icon: Calendar },
+    { name: 'My Bookings', href: `/portal/${profile.business_id}/bookings`, icon: History },
+    { name: 'Membership', href: `/portal/${profile.business_id}/membership`, icon: UserCircle },
+    { name: 'Rewards', href: `/portal/${profile.business_id}/rewards`, icon: Gift },
+    { name: 'Profile', href: `/portal/${profile.business_id}/profile`, icon: UserCircle },
+    { name: 'Feedback', href: `/portal/${profile.business_id}/feedback`, icon: MessageSquare },
+  ] : adminMenu;
 
   return (
     <div className={cn("pb-12 h-full border-r bg-card", className)}>

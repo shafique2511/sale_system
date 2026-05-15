@@ -47,6 +47,10 @@ export const DashboardLayout = () => {
     return <Navigate to="/onboarding" replace />;
   }
 
+  if (profile?.role === 'customer' && !window.location.pathname.startsWith('/portal')) {
+    return <Navigate to={`/portal/${profile.business_id}`} replace />;
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Desktop Sidebar */}

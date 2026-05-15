@@ -20,14 +20,15 @@ import { portalService } from '@/services/portalService';
 
 export const PortalHome = () => {
   const { businessId } = useParams<{ businessId: string }>();
+  const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [customer, setCustomer] = useState<any>(null);
+  const [customerData, setCustomerData] = useState<any>(null);
   const [nextBooking, setNextBooking] = useState<any>(null);
   const [businessName, setBusinessName] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!businessId) return;
+      if (!businessId || !profile) return;
       setLoading(true);
       try {
         const [biz, customers] = await Promise.all([
@@ -37,16 +38,14 @@ export const PortalHome = () => {
 
         setBusinessName(biz.name);
         
-        // For demo, pick the first customer as "logged in"
-        if (customers.length > 0) {
-          const firstCustomer = customers[0];
-          setCustomer(firstCustomer);
-          
-          const bookings = await bookingService.getBookings(businessId);
-          const userBookings = bookings.filter((b: any) => b.customer_id === firstCustomer.id);
-          if (userBookings.length > 0) {
-            setNextBooking(userBookings[0]);
-          }
+        // Find current user in the customers table to get points/etc
+        const currentCustomer = customers.find((c: any) => c.email === profile.email);
+        setCustomerData(currentCustomer || null);
+        
+        const bookings = await bookingService.getBookings(businessId);
+        const userBookings = bookings.filter((b: any) => b.customer_id === profile.id);
+        if (userBookings.length > 0) {
+          setNextBooking(userBookings[0]);
         }
       } catch (error) {
         console.error('Portal home load error:', error);
@@ -55,8 +54,10 @@ export const PortalHome = () => {
       }
     };
 
-    fetchData();
-  }, [businessId]);
+    if (profile) {
+      fetchData();
+    }
+  }, [businessId, profile]);
 
   if (loading) {
     return (
@@ -66,30 +67,20 @@ export const PortalHome = () => {
     );
   }
 
-  if (!customer) {
-    return (
-      <div className="text-center py-12">
-        <h2 className="text-xl font-bold">Welcome to {businessName}</h2>
-        <p className="text-muted-foreground mt-2">Please login to view your rewards and bookings.</p>
-        <Link to={`/portal/${businessId}/book`}>
-          <Button className="mt-6">Book an Appointment</Button>
-        </Link>
-      </div>
-    );
-  }
+  const displayName = profile?.full_name || customerData?.name || 'Customer';
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold tracking-tight">Hi, {customer.name.split(' ')[0]}!</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Hi, {displayName.split(' ')[0]}!</h1>
           <p className="text-muted-foreground flex items-center gap-1">
             <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
-            Member since {new Date(customer.created_at).getFullYear()}
+            Member
           </p>
         </div>
         <div className="h-12 w-12 rounded-full bg-primary/10 border-2 border-primary/20 flex items-center justify-center font-bold text-primary">
-          {customer.name.charAt(0)}
+          {displayName.charAt(0)}
         </div>
       </div>
 
@@ -99,7 +90,7 @@ export const PortalHome = () => {
           <CardContent className="p-6">
             <TrendingUp className="h-6 w-6 mb-2 opacity-80" />
             <p className="text-xs uppercase tracking-widest opacity-80 font-bold">Points Balance</p>
-            <p className="text-3xl font-bold mt-1">{customer.points}</p>
+            <p className="text-3xl font-bold mt-1">{customerData?.points || 0}</p>
           </CardContent>
         </Card>
         <Card>
@@ -201,8 +192,8 @@ export const PortalHome = () => {
               </div>
             </div>
             <div className="mt-8">
-              <CardTitle className="text-2xl font-light tracking-widest uppercase">{customer.name.toUpperCase()}</CardTitle>
-              <CardDescription className="text-white/60 font-mono mt-1">**** **** **** {customer.id.slice(-4)}</CardDescription>
+              <CardTitle className="text-2xl font-light tracking-widest uppercase">{displayName.toUpperCase()}</CardTitle>
+              <CardDescription className="text-white/60 font-mono mt-1">**** **** **** {profile?.id?.slice(-4) || '0000'}</CardDescription>
             </div>
           </CardHeader>
           <CardContent className="pt-4 pb-12 flex justify-between items-end relative z-10">

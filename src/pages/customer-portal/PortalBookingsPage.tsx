@@ -20,34 +20,34 @@ import { toast } from 'sonner';
 
 export const PortalBookingsPage = () => {
   const { businessId } = useParams<{ businessId: string }>();
+  const { profile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<any[]>([]);
   const [businessName, setBusinessName] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!businessId) return;
+      if (!businessId || !profile) return;
       setLoading(true);
       try {
-        const [biz, customers] = await Promise.all([
-          portalService.getBusinessInfo(businessId),
-          customerService.getCustomers(businessId)
+        const [biz] = await Promise.all([
+          portalService.getBusinessInfo(businessId)
         ]);
         setBusinessName(biz.name);
         
-        if (customers.length > 0) {
-          const allBookings = await bookingService.getBookings(businessId);
-          const userBookings = allBookings.filter((b: any) => b.customer_id === customers[0].id);
-          setBookings(userBookings);
-        }
+        const allBookings = await bookingService.getBookings(businessId);
+        const userBookings = allBookings.filter((b: any) => b.customer_id === profile.id);
+        setBookings(userBookings);
       } catch (error) {
         toast.error('Failed to load bookings');
       } finally {
         setLoading(false);
       }
     };
-    fetchData();
-  }, [businessId]);
+    if (profile) {
+      fetchData();
+    }
+  }, [businessId, profile]);
 
   const upcoming = bookings.filter(b => b.status === 'confirmed' || b.status === 'pending');
   const history = bookings.filter(b => b.status === 'completed' || b.status === 'cancelled');
@@ -160,7 +160,7 @@ export const PortalBookingsPage = () => {
                       </div>
                       <div className="flex items-center gap-6">
                          <div className="text-right hidden sm:block">
-                            <p className="text-sm font-bold">${item.total_price.toFixed(2)}</p>
+                            <p className="text-sm font-bold">${(item.total_price || 0).toFixed(2)}</p>
                             <p className="text-[10px] text-muted-foreground capitalize">{item.status}</p>
                          </div>
                          <ChevronRight className="h-5 w-5 text-muted-foreground" />

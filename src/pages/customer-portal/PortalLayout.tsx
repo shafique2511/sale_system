@@ -6,7 +6,8 @@ import {
   Clock, 
   User, 
   Gift, 
-  CreditCard 
+  CreditCard,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { portalService } from '@/services/portalService';
@@ -30,6 +31,7 @@ export const PortalLayout = () => {
     { name: 'Membership', href: `/portal/${businessId}/membership`, icon: CreditCard },
     { name: 'Rewards', href: `/portal/${businessId}/rewards`, icon: Gift },
     { name: 'Profile', href: `/portal/${businessId}/profile`, icon: User },
+    { name: 'Feedback', href: `/portal/${businessId}/feedback`, icon: MessageSquare },
   ];
 
   return (
