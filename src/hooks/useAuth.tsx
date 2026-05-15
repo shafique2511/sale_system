@@ -11,6 +11,7 @@ interface AuthContextType {
   businessId: string | null;
   branchId: string | null;
   loading: boolean;
+  error: string | null; // Added error state
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   setBranchId: (id: string | null) => void;
@@ -22,6 +23,7 @@ const AuthContext = createContext<AuthContextType>({
   businessId: null,
   branchId: null,
   loading: true,
+  error: null, // Initial error state
   signOut: async () => {},
   refreshProfile: async () => {},
   setBranchId: () => {},
@@ -31,6 +33,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null); // State implementation
   const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
@@ -43,7 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .single();
       
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 15000)
+        setTimeout(() => reject(new Error('Profile fetch timeout - the database might be slow or unreachable')), 20000)
       );
 
       const result = await Promise.race([profilePromise, timeoutPromise]) as any;
@@ -74,10 +77,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     // Check active sessions and subscribe to auth changes
     const initAuth = async () => {
+      const isPlaceholder = import.meta.env.VITE_SUPABASE_URL?.includes('placeholder') || !import.meta.env.VITE_SUPABASE_URL;
+      
+      if (isPlaceholder) {
+        const msg = 'Supabase is not configured. Please set your credentials in Settings.';
+        console.error('CRITICAL:', msg);
+        setError(msg);
+        setLoading(false);
+        return;
+      }
+
       try {
         const sessionPromise = supabase.auth.getSession();
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session fetch timeout')), 10000)
+          setTimeout(() => reject(new Error('Connection timeout - check your Supabase settings and network')), 12000)
         );
 
         const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]) as any;
@@ -86,8 +99,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (session?.user) {
           await fetchProfile(session.user.id);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Auth initialization error:', err);
+        setError(err.message || 'Failed to connect to Supabase');
       } finally {
         setLoading(false);
       }
@@ -122,6 +136,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       businessId: profile?.business_id || null,
       branchId: activeBranchId,
       loading, 
+      error, // Passing error here
       signOut,
       refreshProfile,
       setBranchId: setActiveBranchId

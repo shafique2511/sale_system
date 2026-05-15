@@ -81,15 +81,16 @@ export const DashboardPage = () => {
   }, [businessId]);
 
   // Handle case where useAuth finished loading but businessId is still missing
-  const { loading: authLoading } = useAuth();
+  const { loading: authLoading, error: authError } = useAuth();
   
   useEffect(() => {
-    if (!authLoading && !businessId) {
+    if (!authLoading && !businessId && !authError) {
       navigate('/onboarding');
     }
-  }, [authLoading, businessId, navigate]);
+  }, [authLoading, businessId, navigate, authError]);
 
   if (authLoading || loading) {
+    if (authError) return null; // Let ConfigBanner handle the error UI
     return (
       <div className="h-full flex flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

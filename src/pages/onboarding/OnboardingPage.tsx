@@ -12,9 +12,19 @@ import { Store, Rocket, Sparkles, Loader2 } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const OnboardingPage = () => {
-  const { user, refreshProfile } = useAuth();
+  const { user, refreshProfile, error: authError, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+
+  if (authLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <Loader2 className="animate-spin text-primary h-8 w-8" />
+      </div>
+    );
+  }
+
+  if (authError) return null; // Let ConfigBanner handle it
   const [businessName, setBusinessName] = useState('');
   const [businessType, setBusinessType] = useState('');
   const [mode, setMode] = useState<'selection' | 'create'>('selection');
@@ -32,7 +42,12 @@ export const OnboardingPage = () => {
     setLoading(true);
     setProgress('Initializing business...');
     try {
-      await seedService.seedDemoData(user.id, user.email || 'user@example.com');
+      const seedPromise = seedService.seedDemoData(user.id, user.email || 'user@example.com');
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Seed timeout - your Supabase connection is too slow or limited')), 45000)
+      );
+
+      await Promise.race([seedPromise, timeoutPromise]);
       setProgress('Refreshing profile...');
       
       // Try refresh with a short timeout, then just navigate anyway

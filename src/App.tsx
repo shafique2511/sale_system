@@ -3,6 +3,7 @@ import { AuthProvider } from './hooks/useAuth';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from './components/ui/tooltip';
+import { ConfigBanner } from './components/ConfigBanner';
 
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { POSPage } from './pages/pos/POSPage';
@@ -44,6 +45,7 @@ export default function App() {
     <AuthProvider>
       <TooltipProvider>
         <BrowserRouter>
+          <ConfigBanner />
           <Routes>
             <Route path="/auth/login" element={<LoginPage />} />
             <Route path="/auth/register" element={<RegisterPage />} />
