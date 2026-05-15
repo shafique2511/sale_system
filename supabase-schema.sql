@@ -167,101 +167,128 @@ ALTER TABLE membership_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
 ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
 
--- ... (rest of policies)
 -- 3.9 Customers Policies
+DROP POLICY IF EXISTS "Staff can view customers" ON customers;
 CREATE POLICY "Staff can view customers" ON customers
   FOR SELECT USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
 
+DROP POLICY IF EXISTS "Staff can insert customers" ON customers;
 CREATE POLICY "Staff can insert customers" ON customers
   FOR INSERT WITH CHECK (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
 
 -- 3.10 Feedback Policies
+DROP POLICY IF EXISTS "Anyone can view public feedback" ON feedback;
 CREATE POLICY "Anyone can view public feedback" ON feedback
   FOR SELECT USING (is_public = true OR business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
 
+DROP POLICY IF EXISTS "Customers can insert feedback" ON feedback;
 CREATE POLICY "Customers can insert feedback" ON feedback
   FOR INSERT WITH CHECK (customer_id = auth.uid());
 
 -- 3.1 Businesses Policies
+DROP POLICY IF EXISTS "Authenticated users can view businesses" ON businesses;
 CREATE POLICY "Authenticated users can view businesses" ON businesses
   FOR SELECT USING (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Authenticated users can create a business" ON businesses;
 CREATE POLICY "Authenticated users can create a business" ON businesses
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Owners can update their own business" ON businesses;
 CREATE POLICY "Owners can update their own business" ON businesses
   FOR UPDATE USING (id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role = 'owner'));
 
 -- 3.2 User Profiles Policies
+DROP POLICY IF EXISTS "Users can view their own profile" ON user_profiles;
 CREATE POLICY "Users can view their own profile" ON user_profiles
   FOR SELECT USING (id = auth.uid());
 
+DROP POLICY IF EXISTS "Users can insert their own profile" ON user_profiles;
 CREATE POLICY "Users can insert their own profile" ON user_profiles
   FOR INSERT WITH CHECK (id = auth.uid());
 
+DROP POLICY IF EXISTS "Users can update their own profile" ON user_profiles;
 CREATE POLICY "Users can update their own profile" ON user_profiles
   FOR UPDATE USING (id = auth.uid());
 
 -- 3.3 Branches Policies (Owned by business)
+DROP POLICY IF EXISTS "Authenticated users can view branches" ON branches;
 CREATE POLICY "Authenticated users can view branches" ON branches
   FOR SELECT USING (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Authenticated users can insert branches" ON branches;
 CREATE POLICY "Authenticated users can insert branches" ON branches
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Owners can manage branches" ON branches;
 CREATE POLICY "Owners can manage branches" ON branches
   FOR ALL USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role = 'owner'));
 
 -- 3.4 Services Policies
+DROP POLICY IF EXISTS "Anyone can view active services" ON services;
 CREATE POLICY "Anyone can view active services" ON services
   FOR SELECT USING (is_active = true);
 
+DROP POLICY IF EXISTS "Authenticated users can insert services" ON services;
 CREATE POLICY "Authenticated users can insert services" ON services
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Managers and owners can update services" ON services;
 CREATE POLICY "Managers and owners can update services" ON services
   FOR UPDATE USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
 
+DROP POLICY IF EXISTS "Managers and owners can delete services" ON services;
 CREATE POLICY "Managers and owners can delete services" ON services
   FOR DELETE USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
 
 -- 3.5 Products Policies
+DROP POLICY IF EXISTS "Authenticated users can view products" ON products;
 CREATE POLICY "Authenticated users can view products" ON products
   FOR SELECT USING (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Authenticated users can insert products" ON products;
 CREATE POLICY "Authenticated users can insert products" ON products
   FOR INSERT WITH CHECK (auth.role() = 'authenticated');
 
+DROP POLICY IF EXISTS "Managers and owners can update products" ON products;
 CREATE POLICY "Managers and owners can update products" ON products
   FOR UPDATE USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
 
+DROP POLICY IF EXISTS "Managers and owners can delete products" ON products;
 CREATE POLICY "Managers and owners can delete products" ON products
   FOR DELETE USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
 
 -- 3.6 Bookings Policies
+DROP POLICY IF EXISTS "Users can view their own bookings" ON bookings;
 CREATE POLICY "Users can view their own bookings" ON bookings
   FOR SELECT USING (customer_id = auth.uid() OR staff_id = auth.uid() OR business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
 
+DROP POLICY IF EXISTS "Customers can create bookings" ON bookings;
 CREATE POLICY "Customers can create bookings" ON bookings
   FOR INSERT WITH CHECK (customer_id = auth.uid());
 
+DROP POLICY IF EXISTS "Staff can manage their bookings" ON bookings;
 CREATE POLICY "Staff can manage their bookings" ON bookings
   FOR UPDATE USING (staff_id = auth.uid() OR business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid() AND role IN ('owner', 'manager')));
 
 -- 3.7 Orders Policies
 ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Staff can view orders of their business" ON orders;
 CREATE POLICY "Staff can view orders of their business" ON orders
   FOR SELECT USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
 
+DROP POLICY IF EXISTS "Staff can insert orders" ON orders;
 CREATE POLICY "Staff can insert orders" ON orders
   FOR INSERT WITH CHECK (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
 
 -- 3.8 Order Items Policies
 ALTER TABLE order_items ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Staff can view order items" ON order_items;
 CREATE POLICY "Staff can view order items" ON order_items
   FOR SELECT USING (order_id IN (SELECT id FROM orders WHERE business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid())));
 
 -- Staff can manage their order items
+DROP POLICY IF EXISTS "Staff can insert order items" ON order_items;
 CREATE POLICY "Staff can insert order items" ON order_items
   FOR INSERT WITH CHECK (order_id IN (SELECT id FROM orders WHERE business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid())));
 
