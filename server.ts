@@ -122,13 +122,17 @@ async function startServer() {
       }
     });
   } else {
-    // In production (Cloud Run), server.cjs is in the dist folder
-    // Serve static files from the dist folder where index.html is
-    const distPath = path.resolve(__dirname);
+    // In production (Cloud Run), the server runs from the root
+    // Static files are in the dist folder
+    const distPath = path.resolve(process.cwd(), "dist");
+    
+    console.log(`Serving static files from: ${distPath}`);
     app.use(express.static(distPath));
     
     app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+      const indexPath = path.join(distPath, "index.html");
+      console.log(`Fallback: serving ${indexPath}`);
+      res.sendFile(indexPath);
     });
   }
 
