@@ -24,6 +24,8 @@ interface AIInsightsProps {
     bookingsCount: number;
     inventoryCount: number;
     revenueChart: any[];
+    averageRating: number;
+    sentimentStats: { positive: number; neutral: number; negative: number };
   };
 }
 
@@ -40,6 +42,9 @@ export const AIInsights = ({ stats }: AIInsightsProps) => {
         Total Bookings: ${stats.bookingsCount}
         Inventory Items: ${stats.inventoryCount}
         Recent Revenue Trend: ${JSON.stringify(stats.revenueChart)}
+        Customer Satisfaction:
+        Average Rating: ${stats.averageRating.toFixed(1)}/5
+        Sentiment: ${JSON.stringify(stats.sentimentStats)}
       ` : 'New business, no data yet.';
 
       const result = await geminiService.getBusinessInsights(context);

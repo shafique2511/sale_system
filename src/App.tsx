@@ -23,6 +23,7 @@ import { ProductsPage } from './pages/inventory/ProductsPage';
 import { PaymentsPage } from './pages/payments/PaymentsPage';
 import { CommissionPage } from './pages/commission/CommissionPage';
 import { MarketingPage } from './pages/marketing/MarketingPage';
+import { FeedbackPage } from './pages/feedback/FeedbackPage';
 import { BranchesPage } from './pages/branches/BranchesPage';
 import { SettingsPage } from './pages/settings/SettingsPage';
 import { LicensePage } from './pages/settings/LicensePage';
@@ -33,6 +34,7 @@ import { PortalBookingsPage } from './pages/customer-portal/PortalBookingsPage';
 import { PortalMembershipPage } from './pages/customer-portal/PortalMembershipPage';
 import { PortalRewardsPage } from './pages/customer-portal/PortalRewardsPage';
 import { PortalProfilePage } from './pages/customer-portal/PortalProfilePage';
+import { PortalFeedbackPage } from './pages/customer-portal/PortalFeedbackPage';
 import { OmniAssistant } from './components/assistant/OmniAssistant';
 
 // Placeholder components
@@ -65,6 +67,7 @@ export default function App() {
               <Route path="/rewards" element={<RewardsPage />} />
               <Route path="/reports" element={<ReportsPage />} />
               <Route path="/marketing" element={<MarketingPage />} />
+              <Route path="/feedback" element={<FeedbackPage />} />
               <Route path="/branches" element={<BranchesPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/license" element={<LicensePage />} />
@@ -77,6 +80,7 @@ export default function App() {
               <Route path="membership" element={<PortalMembershipPage />} />
               <Route path="rewards" element={<PortalRewardsPage />} />
               <Route path="profile" element={<PortalProfilePage />} />
+              <Route path="feedback" element={<PortalFeedbackPage />} />
             </Route>
 
           </Routes>

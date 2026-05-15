@@ -10,7 +10,12 @@ import {
   TrendingDown,
   Activity,
   Loader2,
-  ShoppingCart
+  ShoppingCart,
+  Star,
+  MessageSquare,
+  Smile,
+  Frown,
+  Meh
 } from 'lucide-react';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { AIInsights } from '@/components/dashboard/AIInsights';
@@ -97,11 +102,11 @@ export const DashboardPage = () => {
           trend={{ value: 0, isUp: true }}
         />
         <StatCard 
-          title="Completion Rate" 
-          value="100%" 
-          description="Service accuracy" 
-          icon={<CheckCircle className="h-4 w-4" />}
-          trend={{ value: 0, isUp: true }}
+          title="Customer Satisfaction" 
+          value={`${stats.averageRating.toFixed(1)}/5`} 
+          description="Avg. based on feedback" 
+          icon={<Star className="h-4 w-4 text-yellow-500 fill-yellow-500" />}
+          trend={{ value: stats.sentimentStats.positive, isUp: true }}
         />
       </div>
 
@@ -160,6 +165,41 @@ export const DashboardPage = () => {
                   <p>No recent activity. Start by making a sale in the POS!</p>
                 </div>
               )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Customer Sentiment</CardTitle>
+            <CardDescription>AI-analyzed feedback sentiment.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smile className="h-4 w-4 text-green-500" />
+                  <span className="text-sm font-medium">Positive</span>
+                </div>
+                <span className="text-sm font-bold">{stats.sentimentStats.positive}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Meh className="h-4 w-4 text-yellow-500" />
+                  <span className="text-sm font-medium">Neutral</span>
+                </div>
+                <span className="text-sm font-bold">{stats.sentimentStats.neutral}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Frown className="h-4 w-4 text-red-500" />
+                  <span className="text-sm font-medium">Negative</span>
+                </div>
+                <span className="text-sm font-bold">{stats.sentimentStats.negative}</span>
+              </div>
+              <Button variant="ghost" className="w-full mt-2 text-xs h-8" onClick={() => navigate('/feedback')}>
+                View all feedback
+              </Button>
             </div>
           </CardContent>
         </Card>

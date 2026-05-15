@@ -13,6 +13,7 @@ import {
   Store, 
   UserCircle,
   LogOut,
+  MessageSquare,
   ChevronRight,
   TrendingUp,
   Tag,
@@ -51,6 +52,7 @@ const adminMenu = [
   { name: 'Rewards', href: '/rewards', icon: Gift },
   { name: 'Reports', href: '/reports', icon: PieChart },
   { name: 'Marketing', href: '/marketing', icon: Megaphone },
+  { name: 'Feedback', href: '/feedback', icon: MessageSquare },
   { name: 'Branches', href: '/branches', icon: MapPin },
   { name: 'Settings', href: '/settings', icon: Settings },
   { name: 'License', href: '/license', icon: Key },
@@ -63,6 +65,7 @@ const customerMenu = [
   { name: 'Membership', href: '/portal/membership', icon: UserCircle },
   { name: 'Rewards', href: '/portal/rewards', icon: Gift },
   { name: 'Profile', href: '/portal/profile', icon: UserCircle },
+  { name: 'Feedback', href: '/portal/feedback', icon: MessageSquare },
 ];
 
 export const Sidebar = ({ className, onClick, ...props }: SidebarProps & { onClick?: () => void }) => {

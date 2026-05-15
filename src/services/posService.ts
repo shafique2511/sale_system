@@ -149,11 +149,29 @@ export const posService = {
         revenue
     })).reverse(); // Oldest first
 
+    // 5. Feedback Stats
+    const { data: feedbackData, error: feedbackError } = await supabase
+      .from('feedback')
+      .select('rating, sentiment')
+      .eq('business_id', businessId);
+    
+    let averageRating = 0;
+    let sentimentStats = { positive: 0, neutral: 0, negative: 0 };
+
+    if (!feedbackError && feedbackData && feedbackData.length > 0) {
+      averageRating = feedbackData.reduce((acc, f) => acc + f.rating, 0) / feedbackData.length;
+      feedbackData.forEach(f => {
+        if (f.sentiment) sentimentStats[f.sentiment as keyof typeof sentimentStats]++;
+      });
+    }
+
     return {
       totalSales,
       bookingsCount: bookingsCount || 0,
       inventoryCount: inventoryCount || 0,
-      revenueChart: processedChartData
+      revenueChart: processedChartData,
+      averageRating,
+      sentimentStats
     };
   },
 

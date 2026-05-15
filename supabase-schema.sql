@@ -130,6 +130,32 @@ CREATE TABLE IF NOT EXISTS membership_plans (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Customers (Legacy or separate tracking)
+CREATE TABLE IF NOT EXISTS customers (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT,
+  points INTEGER DEFAULT 0,
+  tags TEXT[],
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Feedback & Reviews
+CREATE TABLE IF NOT EXISTS feedback (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  business_id UUID REFERENCES businesses(id) ON DELETE CASCADE,
+  branch_id UUID REFERENCES branches(id) ON DELETE CASCADE,
+  customer_id UUID REFERENCES user_profiles(id),
+  rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+  comment TEXT,
+  sentiment TEXT, -- positive, neutral, negative (analyzed by AI)
+  source TEXT DEFAULT 'direct', -- direct, email, qr
+  is_public BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- 3. RLS POLICIES (BASIC)
 ALTER TABLE businesses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE branches ENABLE ROW LEVEL SECURITY;
@@ -138,6 +164,23 @@ ALTER TABLE services ENABLE ROW LEVEL SECURITY;
 ALTER TABLE products ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE membership_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE customers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
+
+-- ... (rest of policies)
+-- 3.9 Customers Policies
+CREATE POLICY "Staff can view customers" ON customers
+  FOR SELECT USING (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
+
+CREATE POLICY "Staff can insert customers" ON customers
+  FOR INSERT WITH CHECK (business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
+
+-- 3.10 Feedback Policies
+CREATE POLICY "Anyone can view public feedback" ON feedback
+  FOR SELECT USING (is_public = true OR business_id IN (SELECT business_id FROM user_profiles WHERE id = auth.uid()));
+
+CREATE POLICY "Customers can insert feedback" ON feedback
+  FOR INSERT WITH CHECK (customer_id = auth.uid());
 
 -- 3.1 Businesses Policies
 CREATE POLICY "Users can view their own business" ON businesses
