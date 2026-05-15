@@ -30,6 +30,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Card, CardContent } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import { inventoryService, Product } from '@/services/inventoryService';
@@ -146,7 +147,7 @@ export const InventoryPage = () => {
       </div>
 
       <div className="border rounded-lg bg-card overflow-hidden">
-        <ScrollArea className="w-full" orientation="horizontal">
+        <ScrollArea className="w-full">
           <Table>
             <TableHeader>
               <TableRow>
@@ -190,7 +191,7 @@ export const InventoryPage = () => {
                 <TableCell className="font-bold">${item.selling_price.toFixed(2)}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                    <DropdownMenuTrigger>
                       <Button variant="ghost" size="icon">
                         <MoreVertical className="h-4 w-4" />
                       </Button>

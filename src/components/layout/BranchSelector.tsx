@@ -38,7 +38,7 @@ export const BranchSelector = () => {
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
+      <DropdownMenuTrigger>
         <Button variant="ghost" className="h-auto py-1 px-2 border hover:bg-accent flex items-center gap-2">
           <MapPin className="h-3 w-3 text-primary" />
           <div className="text-left">

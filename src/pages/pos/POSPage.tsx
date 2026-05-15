@@ -256,7 +256,7 @@ export const POSPage = () => {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <ScrollArea className="w-full md:w-auto" orientation="horizontal">
+            <ScrollArea className="w-full md:w-auto">
               <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-fit">
                 <TabsList className="justify-start">
                   {categories.map(cat => (
@@ -321,7 +321,7 @@ export const POSPage = () => {
         {/* Mobile Cart Floating Button */}
         <div className="xl:hidden fixed bottom-6 right-6 z-40">
           <Sheet>
-            <SheetTrigger asChild>
+            <SheetTrigger>
               <Button size="lg" className="rounded-full h-14 w-14 shadow-2xl relative">
                 <ShoppingCart className="h-6 w-6" />
                 {cart.length > 0 && (

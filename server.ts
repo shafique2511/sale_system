@@ -46,7 +46,7 @@ async function startServer() {
         Business Context:
         ${context}`;
 
-      const result = await ai.models.generateContent({
+      const response = await ai.models.generateContent({
         model: "gemini-3-flash-preview",
         contents: prompt,
         config: {
@@ -54,7 +54,7 @@ async function startServer() {
         }
       });
 
-      res.json(JSON.parse(result.text || "[]"));
+      res.json(JSON.parse(response.text || "[]"));
     } catch (error) {
       console.error("AI Insights Error:", error);
       res.status(500).json({ error: "Failed to generate insights" });
@@ -108,11 +108,13 @@ async function startServer() {
     
     // Explicitly handle SPA fallback for dev mode
     app.use("*", async (req, res, next) => {
-      const url = req.originalUrl;
+      if (req.originalUrl.startsWith('/api')) {
+        return next();
+      }
       try {
         const fs = await import("fs");
         let template = fs.readFileSync(path.resolve(process.cwd(), "index.html"), "utf-8");
-        template = await vite.transformIndexHtml(url, template);
+        template = await vite.transformIndexHtml(req.originalUrl, template);
         res.status(200).set({ "Content-Type": "text/html" }).end(template);
       } catch (e) {
         vite.ssrFixStacktrace(e as Error);
@@ -120,12 +122,11 @@ async function startServer() {
       }
     });
   } else {
-    const isProduction = process.env.NODE_ENV === "production";
-    const distPath = isProduction 
-      ? path.resolve(__dirname) 
-      : path.resolve(__dirname, "dist");
-    
+    // In production (Cloud Run), server.cjs is in the dist folder
+    // Serve static files from the dist folder where index.html is
+    const distPath = path.resolve(__dirname);
     app.use(express.static(distPath));
+    
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });

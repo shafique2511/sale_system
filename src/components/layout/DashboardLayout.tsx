@@ -60,7 +60,7 @@ export const DashboardLayout = () => {
         <header className="h-16 border-b flex items-center justify-between px-4 md:px-8 bg-card shrink-0">
           <div className="flex items-center gap-4">
             <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-              <SheetTrigger asChild>
+              <SheetTrigger>
                 <Button variant="ghost" size="icon" className="md:hidden">
                   <Menu className="h-5 w-5" />
                 </Button>

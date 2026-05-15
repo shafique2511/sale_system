@@ -167,8 +167,8 @@ export const PortalRewardsPage = () => {
                      <div className="space-y-1">
                         {!isAvailable && (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                             <Progress value={(currentPoints / reward.points_required) * 100} className="h-1 w-20" />
-                             <span>{Math.round((currentPoints / reward.points_required) * 100)}% there</span>
+                             <Progress value={(currentPoints / reward.point_cost) * 100} className="h-1 w-20" />
+                             <span>{Math.round((currentPoints / reward.point_cost) * 100)}% there</span>
                           </div>
                         )}
                      </div>

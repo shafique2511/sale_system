@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { customerService, Customer } from '@/services/customerService';
 import { toast } from 'sonner';
@@ -105,7 +106,7 @@ export const CustomersPage = () => {
       </div>
 
       <div className="border rounded-lg bg-card overflow-hidden">
-        <ScrollArea className="w-full" orientation="horizontal">
+        <ScrollArea className="w-full">
           <Table>
             <TableHeader>
               <TableRow>
@@ -141,7 +142,7 @@ export const CustomersPage = () => {
                     <div className="flex flex-col gap-1">
                       {customer.email && (
                         <div className="flex items-center gap-1 text-xs">
-                          <Mail className="h-3 w-3 opacity-50" />
+                           <Mail className="h-3 w-3 opacity-50" />
                           {customer.email}
                         </div>
                       )}
@@ -161,7 +162,7 @@ export const CustomersPage = () => {
                   </TableCell>
                   <TableCell className="text-right">
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+            <DropdownMenuTrigger>
               <Button variant="ghost" size="icon">
                 <MoreVertical className="h-4 w-4" />
               </Button>

@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/hooks/useAuth';
 import { bookingService } from '@/services/bookingService';
 
@@ -130,7 +131,7 @@ export const BookingsPage = () => {
       </div>
 
       <div className="border rounded-lg bg-card overflow-hidden">
-        <ScrollArea className="w-full" orientation="horizontal">
+        <ScrollArea className="w-full">
           <Table>
             <TableHeader>
               <TableRow>
@@ -174,7 +175,7 @@ export const BookingsPage = () => {
                 <TableCell className="font-bold">${Number(booking.total_price).toFixed(2)}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                    <DropdownMenuTrigger>
                       <Button variant="ghost" size="icon">
                         <MoreVertical className="h-4 w-4" />
                       </Button>

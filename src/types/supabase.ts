@@ -14,7 +14,12 @@ export interface Database {
           id: string
           name: string
           type: string
+          description: string | null
+          email: string | null
+          phone: string | null
+          website: string | null
           logo_url: string | null
+          loyalty_points_per_dollar: number
           created_at: string
           updated_at: string
         }
@@ -22,7 +27,12 @@ export interface Database {
           id?: string
           name: string
           type: string
+          description?: string | null
+          email?: string | null
+          phone?: string | null
+          website?: string | null
           logo_url?: string | null
+          loyalty_points_per_dollar?: number
           created_at?: string
           updated_at?: string
         }
@@ -30,7 +40,82 @@ export interface Database {
           id?: string
           name?: string
           type?: string
+          description?: string | null
+          email?: string | null
+          phone?: string | null
+          website?: string | null
           logo_url?: string | null
+          loyalty_points_per_dollar?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      customers: {
+        Row: {
+          id: string
+          business_id: string
+          name: string
+          email: string | null
+          phone: string | null
+          address: string | null
+          points: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          name: string
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          points?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          name?: string
+          email?: string | null
+          phone?: string | null
+          address?: string | null
+          points?: number
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      loyalty_rewards: {
+        Row: {
+          id: string
+          business_id: string
+          name: string
+          description: string | null
+          point_cost: number
+          reward_type: string
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          business_id: string
+          name: string
+          description?: string | null
+          point_cost: number
+          reward_type?: string
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          business_id?: string
+          name?: string
+          description?: string | null
+          point_cost?: number
+          reward_type?: string
+          is_active?: boolean
           created_at?: string
           updated_at?: string
         }

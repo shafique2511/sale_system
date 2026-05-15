@@ -70,19 +70,33 @@ export const PortalBookPage = () => {
 
     setSubmitting(true);
     try {
+      // Parse the time string (e.g., "09:00 AM")
+      const [timeStr, period] = time.split(' ');
+      let [hours, minutes] = timeStr.split(':').map(Number);
+      if (period === 'PM' && hours < 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+
+      const startTime = new Date(date);
+      startTime.setHours(hours, minutes, 0, 0);
+
+      const endTime = new Date(startTime.getTime() + selectedService.duration_minutes * 60000);
+
       await bookingService.createBooking({
         business_id: businessId,
         customer_id: customerId,
         service_id: selectedService.id,
         staff_id: selectedStaff?.id || null,
-        booking_date: date.toISOString().split('T')[0],
-        start_time: time,
-        status: 'confirmed',
-        total_price: selectedService.price
+        branch_id: selectedService.branch_id || null, // Fallback if branch_id is on service
+        start_time: startTime.toISOString(),
+        end_time: endTime.toISOString(),
+        status: 'pending', // Use pending as per schema default or common practice
+        total_price: selectedService.price,
+        notes: ''
       });
       toast.success('Appointment booked successfully!');
       navigate(`/portal/${businessId}`);
     } catch (error) {
+      console.error('Booking Error:', error);
       toast.error('Failed to create booking');
     } finally {
       setSubmitting(false);
