@@ -105,7 +105,7 @@ export const DashboardPage = () => {
         />
       </div>
 
-      <AIInsights />
+      <AIInsights stats={stats} />
 
       <div className="grid grid-cols-1 lg:grid-cols-7 gap-6">
         <Card className="lg:col-span-12">

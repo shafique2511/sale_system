@@ -46,5 +46,21 @@ export const businessService = {
     
     if (error) throw error;
     return data as Branch;
+  },
+
+  async updateBusiness(businessId: string, updates: Partial<Business>) {
+    const { data, error } = await supabase
+      .from('businesses')
+      .update(updates)
+      .eq('id', businessId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data as Business;
+  },
+
+  async getBusinessById(businessId: string) {
+    return this.getBusiness(businessId);
   }
 };

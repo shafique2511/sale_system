@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigate, Outlet } from 'react-router-dom';
 import { Skeleton } from '@/components/ui/skeleton';
+import { BranchSelector } from './BranchSelector';
 
 export const DashboardLayout = () => {
   const { user, loading, profile } = useAuth();
@@ -52,13 +53,16 @@ export const DashboardLayout = () => {
               Welcome back, <span className="text-foreground capitalize">{profile?.full_name || 'User'}</span>
             </h1>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right mr-2">
-              <p className="text-xs font-bold leading-none capitalize">{profile?.role || 'Guest'}</p>
-              <p className="text-[10px] text-muted-foreground mt-1 underline">Switch Branch</p>
-            </div>
-            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-xs">
-              {profile?.full_name?.charAt(0) || 'U'}
+          <div className="flex items-center gap-6">
+            <BranchSelector />
+            <div className="flex items-center gap-3 border-l pl-6">
+              <div className="text-right">
+                <p className="text-xs font-bold leading-none capitalize">{profile?.full_name || 'User'}</p>
+                <p className="text-[10px] text-muted-foreground mt-1 capitalize">{profile?.role || 'Guest'}</p>
+              </div>
+              <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm shadow-sm">
+                {profile?.full_name?.charAt(0) || 'U'}
+              </div>
             </div>
           </div>
         </header>

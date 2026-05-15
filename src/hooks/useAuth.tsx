@@ -13,6 +13,7 @@ interface AuthContextType {
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  setBranchId: (id: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -23,12 +24,14 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   signOut: async () => {},
   refreshProfile: async () => {},
+  setBranchId: () => {},
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeBranchId, setActiveBranchId] = useState<string | null>(null);
 
   const fetchProfile = async (userId: string) => {
     try {
@@ -42,6 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error('Error fetching profile:', error);
       } else {
         setProfile(data);
+        setActiveBranchId(data.branch_id);
       }
     } catch (err) {
       console.error('Profile fetch error:', err);
@@ -88,10 +92,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       user, 
       profile, 
       businessId: profile?.business_id || null,
-      branchId: profile?.branch_id || null,
+      branchId: activeBranchId,
       loading, 
       signOut,
-      refreshProfile
+      refreshProfile,
+      setBranchId: setActiveBranchId
     }}>
       {children}
     </AuthContext.Provider>

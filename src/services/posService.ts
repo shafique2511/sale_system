@@ -32,8 +32,35 @@ export const posService = {
       .insert(orderItems);
 
     if (itemsError) throw itemsError;
+    
+    // 3. Award Loyalty Points if customer is linked
+    if (order.customer_id) {
+      try {
+        // Get the business loyalty settings first
+        const { data: business } = await supabase
+          .from('businesses')
+          .select('loyalty_points_per_dollar')
+          .eq('id', order.business_id)
+          .single();
+        
+        const rate = business?.loyalty_points_per_dollar || 1;
+        const pointsToAward = Math.floor(Number(order.total_amount) * rate);
+        
+        if (pointsToAward > 0) {
+          // Increment customer points
+          const { error: pointsError } = await supabase.rpc('increment_customer_points', {
+            c_id: order.customer_id,
+            amount: pointsToAward
+          });
+          
+          if (pointsError) console.error('Points awarding error:', pointsError);
+        }
+      } catch (err) {
+        console.error('Failed to award loyalty points:', err);
+      }
+    }
 
-    // 3. Update stock for products
+    // 4. Update stock for products
     for (const item of items) {
       if (item.product_id) {
         // This should probably be a RPC call or use increment/decrement to be safe

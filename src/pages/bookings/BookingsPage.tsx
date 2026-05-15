@@ -157,8 +157,12 @@ export const BookingsPage = () => {
                 </TableCell>
                 <TableCell>
                   <div className="flex flex-col">
-                    <span className="text-sm font-medium">{booking.start_time}</span>
-                    <span className="text-xs text-muted-foreground">{new Date(booking.booking_date).toLocaleDateString()}</span>
+                    <span className="text-sm font-medium">
+                      {new Date(booking.start_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(booking.start_time).toLocaleDateString()}
+                    </span>
                   </div>
                 </TableCell>
                 <TableCell>

@@ -10,7 +10,6 @@ import {
   Loader2
 } from 'lucide-react';
 import { geminiService } from '@/services/geminiService';
-import { mockProducts, mockCustomers } from '@/constants/mockData';
 import { Badge } from '@/components/ui/badge';
 
 interface Insight {
@@ -19,20 +18,30 @@ interface Insight {
   impact: 'High' | 'Medium' | 'Low';
 }
 
-export const AIInsights = () => {
+interface AIInsightsProps {
+  stats?: {
+    totalSales: number;
+    bookingsCount: number;
+    inventoryCount: number;
+    revenueChart: any[];
+  };
+}
+
+export const AIInsights = ({ stats }: AIInsightsProps) => {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchInsights = async () => {
     setLoading(true);
     try {
-      const context = `
-        Business: Barber/Service Shop Demo
-        Inventory: ${mockProducts.length} items
-        Customers: ${mockCustomers.length} total
-        Stats: Recent sales are up 12.5%, bookings at 148, membership active 42.
-        Common Products: ${mockProducts.slice(0, 3).map(p => p.name).join(', ')}
-      `;
+      const context = stats ? `
+        Business Stats:
+        Total Sales: $${stats.totalSales}
+        Total Bookings: ${stats.bookingsCount}
+        Inventory Items: ${stats.inventoryCount}
+        Recent Revenue Trend: ${JSON.stringify(stats.revenueChart)}
+      ` : 'New business, no data yet.';
+
       const result = await geminiService.getBusinessInsights(context);
       setInsights(result);
     } catch (error) {
@@ -43,8 +52,10 @@ export const AIInsights = () => {
   };
 
   useEffect(() => {
-    fetchInsights();
-  }, []);
+    if (stats) {
+      fetchInsights();
+    }
+  }, [stats]);
 
   return (
     <Card className="border-primary/20 bg-primary/5">

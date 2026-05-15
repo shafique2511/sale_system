@@ -19,10 +19,10 @@ import {
   RefreshCw,
   Store
 } from 'lucide-react';
-import { mockCategories } from '@/constants/mockData';
 import { toast } from 'sonner';
 import { inventoryService, Product, Service } from '@/services/inventoryService';
 import { posService } from '@/services/posService';
+import { customerService } from '@/services/customerService';
 import { useAuth } from '@/hooks/useAuth';
 
 interface CartItem {
@@ -40,6 +40,10 @@ export const POSPage = () => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [customerSearch, setCustomerSearch] = useState('');
+  const [showCustomerSearch, setShowCustomerSearch] = useState(false);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
 
@@ -47,12 +51,14 @@ export const POSPage = () => {
     if (!businessId) return;
     setLoading(true);
     try {
-      const [productsData, servicesData] = await Promise.all([
+      const [productsData, servicesData, customersData] = await Promise.all([
         inventoryService.getProducts(businessId),
-        inventoryService.getServices(businessId)
+        inventoryService.getServices(businessId),
+        customerService.getCustomers(businessId)
       ]);
       setProducts(productsData);
       setServices(servicesData);
+      setCustomers(customersData);
     } catch (error) {
       toast.error('Failed to fetch items');
     } finally {
@@ -68,6 +74,8 @@ export const POSPage = () => {
     ...products.map(p => ({ ...p, type: 'product' as const })),
     ...services.map(s => ({ ...s, type: 'service' as const, selling_price: s.price }))
   ];
+
+  const categories = ['All', ...new Set(allItems.map(item => item.category).filter(Boolean))];
 
   const filteredItems = allItems.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -128,6 +136,7 @@ export const POSPage = () => {
         business_id: businessId,
         branch_id: branchId,
         staff_id: user.id,
+        customer_id: selectedCustomer?.id || null,
         total_amount: total,
         tax_amount: tax,
         payment_method: method,
@@ -166,10 +175,64 @@ export const POSPage = () => {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <User className="h-4 w-4" />
-            Select Customer
-          </Button>
+          <div className="relative">
+            <Button 
+              variant={selectedCustomer ? "default" : "outline"} 
+              size="sm" 
+              className="gap-2"
+              onClick={() => setShowCustomerSearch(!showCustomerSearch)}
+            >
+              <User className="h-4 w-4" />
+              {selectedCustomer ? selectedCustomer.name : 'Select Customer'}
+            </Button>
+            {showCustomerSearch && (
+              <div className="absolute right-0 mt-2 w-72 bg-popover border rounded-lg shadow-xl z-50 p-2 animate-in fade-in zoom-in-95">
+                <Input 
+                  placeholder="Search customer name..." 
+                  value={customerSearch}
+                  onChange={(e) => setCustomerSearch(e.target.value)}
+                  className="mb-2"
+                  autoFocus
+                />
+                <ScrollArea className="h-48">
+                  <div className="space-y-1">
+                    {customers
+                      .filter(c => c.name.toLowerCase().includes(customerSearch.toLowerCase()))
+                      .map(customer => (
+                        <button
+                          key={customer.id}
+                          className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors flex justify-between items-center"
+                          onClick={() => {
+                            setSelectedCustomer(customer);
+                            setShowCustomerSearch(false);
+                            setCustomerSearch('');
+                          }}
+                        >
+                          <span>{customer.name}</span>
+                          <Badge variant="secondary" className="text-[10px]">{customer.points} pts</Badge>
+                        </button>
+                      ))}
+                    {customers.filter(c => c.name.toLowerCase().includes(customerSearch.toLowerCase())).length === 0 && (
+                      <p className="text-center text-xs text-muted-foreground py-4">No customers found</p>
+                    )}
+                  </div>
+                </ScrollArea>
+                {selectedCustomer && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="w-full mt-2 text-xs text-destructive"
+                    onClick={() => {
+                      setSelectedCustomer(null);
+                      setShowCustomerSearch(false);
+                    }}
+                  >
+                    Clear Selection
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
           <Badge variant="secondary" className="px-3 py-1">Terminal #01</Badge>
         </div>
       </div>
@@ -189,7 +252,7 @@ export const POSPage = () => {
             </div>
             <Tabs value={selectedCategory} onValueChange={setSelectedCategory} className="w-auto">
               <TabsList>
-                {mockCategories.map(cat => (
+                {categories.map(cat => (
                   <TabsTrigger key={cat} value={cat}>{cat}</TabsTrigger>
                 ))}
               </TabsList>
