@@ -146,19 +146,20 @@ export const InventoryPage = () => {
       </div>
 
       <div className="border rounded-lg bg-card overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Product</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>SKU</TableHead>
-              <TableHead>Stock Level</TableHead>
-              <TableHead>Cost Price</TableHead>
-              <TableHead>Retail Price</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <ScrollArea className="w-full" orientation="horizontal">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[200px]">Product</TableHead>
+                <TableHead className="min-w-[120px]">Category</TableHead>
+                <TableHead>SKU</TableHead>
+                <TableHead className="min-w-[150px]">Stock Level</TableHead>
+                <TableHead>Cost</TableHead>
+                <TableHead>Retail</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
             {filteredItems.map((item) => (
               <TableRow key={item.id}>
                 <TableCell>
@@ -189,11 +190,11 @@ export const InventoryPage = () => {
                 <TableCell className="font-bold">${item.selling_price.toFixed(2)}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
-                    <DropdownMenuTrigger render={
+                    <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <MoreVertical className="h-4 w-4" />
                       </Button>
-                    } />
+                    </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem>Adjust Stock</DropdownMenuItem>
                       <DropdownMenuItem>Edit Product</DropdownMenuItem>
@@ -211,7 +212,8 @@ export const InventoryPage = () => {
               </TableRow>
             )}
           </TableBody>
-        </Table>
+          </Table>
+        </ScrollArea>
       </div>
     </div>
   );

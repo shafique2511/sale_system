@@ -130,31 +130,32 @@ export const BookingsPage = () => {
       </div>
 
       <div className="border rounded-lg bg-card overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Customer</TableHead>
-              <TableHead>Service</TableHead>
-              <TableHead>Staff</TableHead>
-              <TableHead>Time & Date</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Price</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredBookings.map((booking) => (
-              <TableRow key={booking.id}>
-                <TableCell className="font-medium">{booking.customer?.name || 'Walk-in'}</TableCell>
-                <TableCell>{booking.service?.name}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
-                      {booking.staff?.full_name?.charAt(0) || 'U'}
+        <ScrollArea className="w-full" orientation="horizontal">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[150px]">Customer</TableHead>
+                <TableHead className="min-w-[120px]">Service</TableHead>
+                <TableHead className="hidden md:table-cell min-w-[120px]">Staff</TableHead>
+                <TableHead className="min-w-[150px]">Time & Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Price</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredBookings.map((booking) => (
+                <TableRow key={booking.id}>
+                  <TableCell className="font-medium">{booking.customer?.name || 'Walk-in'}</TableCell>
+                  <TableCell>{booking.service?.name}</TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <div className="flex items-center gap-2">
+                      <div className="h-6 w-6 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold">
+                        {booking.staff?.full_name?.charAt(0) || 'U'}
+                      </div>
+                      <span className="truncate">{booking.staff?.full_name || 'Unassigned'}</span>
                     </div>
-                    {booking.staff?.full_name || 'Unassigned'}
-                  </div>
-                </TableCell>
+                  </TableCell>
                 <TableCell>
                   <div className="flex flex-col">
                     <span className="text-sm font-medium">
@@ -173,11 +174,11 @@ export const BookingsPage = () => {
                 <TableCell className="font-bold">${Number(booking.total_price).toFixed(2)}</TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
-                    <DropdownMenuTrigger render={
+                    <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon">
                         <MoreVertical className="h-4 w-4" />
                       </Button>
-                    } />
+                    </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem className="gap-2" onClick={() => handleUpdateStatus(booking.id, 'confirmed')}>
                         <CheckCircle2 className="h-4 w-4 text-green-500" /> Confirm
@@ -201,7 +202,8 @@ export const BookingsPage = () => {
               </TableRow>
             )}
           </TableBody>
-        </Table>
+          </Table>
+        </ScrollArea>
       </div>
     </div>
   );

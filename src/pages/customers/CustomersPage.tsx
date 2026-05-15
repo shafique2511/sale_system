@@ -105,17 +105,18 @@ export const CustomersPage = () => {
       </div>
 
       <div className="border rounded-lg bg-card overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[300px]">Customer</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Points</TableHead>
-              <TableHead>Joined</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
+        <ScrollArea className="w-full" orientation="horizontal">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[200px]">Customer</TableHead>
+                <TableHead className="min-w-[150px]">Contact</TableHead>
+                <TableHead>Points</TableHead>
+                <TableHead>Joined</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
             {filteredCustomers.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
@@ -159,13 +160,13 @@ export const CustomersPage = () => {
                     {new Date(customer.created_at).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger render={
-                        <Button variant="ghost" size="icon">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      } />
-                      <DropdownMenuContent align="end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
                         <DropdownMenuItem className="gap-2">
                           <User className="h-4 w-4" /> View Profile
                         </DropdownMenuItem>
@@ -183,7 +184,8 @@ export const CustomersPage = () => {
             )}
           </TableBody>
         </Table>
-      </div>
+      </ScrollArea>
     </div>
-  );
+  </div>
+);
 };

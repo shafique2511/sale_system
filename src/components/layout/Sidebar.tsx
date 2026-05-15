@@ -65,7 +65,7 @@ const customerMenu = [
   { name: 'Profile', href: '/portal/profile', icon: UserCircle },
 ];
 
-export const Sidebar = ({ className, ...props }: SidebarProps) => {
+export const Sidebar = ({ className, onClick, ...props }: SidebarProps & { onClick?: () => void }) => {
   const { profile, signOut } = useAuth();
   
   const menu = profile?.role === 'customer' ? customerMenu : adminMenu;
@@ -83,6 +83,7 @@ export const Sidebar = ({ className, ...props }: SidebarProps) => {
               <NavLink
                 key={item.href}
                 to={item.href}
+                onClick={onClick}
                 className={({ isActive }) =>
                   cn(
                     "group flex items-center rounded-md px-3 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground transition-colors",
