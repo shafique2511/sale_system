@@ -14,6 +14,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { useParams, Link } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import { bookingService } from '@/services/bookingService';
 import { customerService } from '@/services/customerService';
 import { portalService } from '@/services/portalService';

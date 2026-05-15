@@ -61,7 +61,7 @@ export const PortalRewardsPage = () => {
   }
 
   const currentPoints = customer?.points || 0;
-  const nextReward = rewards.find(r => r.points_required > currentPoints) || rewards[rewards.length - 1];
+  const nextReward = rewards.find(r => r.point_cost > currentPoints) || rewards[rewards.length - 1];
 
   const getRewardIcon = (type: string) => {
     switch (type) {
@@ -107,11 +107,11 @@ export const PortalRewardsPage = () => {
                 <div className="w-full md:w-64 space-y-4">
                    <div className="flex justify-between text-sm font-bold uppercase tracking-widest opacity-80 mb-1">
                       <span>Next Reward</span>
-                      <span>{currentPoints} / {nextReward.points_required}</span>
+                      <span>{currentPoints} / {nextReward.point_cost}</span>
                    </div>
-                   <Progress value={Math.min((currentPoints / nextReward.points_required) * 100, 100)} className="h-3 bg-white/20" />
+                   <Progress value={Math.min((currentPoints / nextReward.point_cost) * 100, 100)} className="h-3 bg-white/20" />
                    <p className="text-[10px] text-center opacity-60">
-                     You are {Math.max(nextReward.points_required - currentPoints, 0)} points away from {nextReward.name}!
+                     You are {Math.max(nextReward.point_cost - currentPoints, 0)} points away from {nextReward.name}!
                    </p>
                 </div>
               )}
@@ -129,7 +129,7 @@ export const PortalRewardsPage = () => {
       {/* Rewards Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
          {rewards.map((reward, i) => {
-           const isAvailable = currentPoints >= reward.points_required;
+           const isAvailable = currentPoints >= reward.point_cost;
            const Icon = getRewardIcon(reward.reward_type);
            const color = getRewardColor(reward.reward_type);
            
@@ -153,12 +153,12 @@ export const PortalRewardsPage = () => {
                      </div>
                      {isAvailable ? (
                         <Badge variant="secondary" className="bg-primary/10 text-primary font-bold border-primary/20">
-                           {reward.points_required} PTS
+                           {reward.point_cost} PTS
                         </Badge>
                      ) : (
                         <div className="flex flex-col items-end gap-1">
                            <Lock className="h-4 w-4 text-muted-foreground" />
-                           <span className="text-[10px] font-bold text-muted-foreground">{reward.points_required} PTS</span>
+                           <span className="text-[10px] font-bold text-muted-foreground">{reward.point_cost} PTS</span>
                         </div>
                      )}
                   </div>

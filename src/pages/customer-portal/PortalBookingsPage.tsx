@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useParams, Link } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 import { bookingService } from '@/services/bookingService';
 import { customerService } from '@/services/customerService';
 import { portalService } from '@/services/portalService';

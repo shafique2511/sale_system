@@ -27,6 +27,17 @@ export const bookingService = {
     return data;
   },
 
+  async createBooking(booking: Omit<Booking, 'id' | 'created_at'>) {
+    const { data, error } = await supabase
+      .from('bookings')
+      .insert(booking)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
   async updateBookingStatus(id: string, status: string) {
     const { data, error } = await supabase
       .from('bookings')
